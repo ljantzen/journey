@@ -65,6 +65,12 @@ journey --relative-date 1 Note for yesterday
 # Add note with specific time (no quotes needed)
 journey --time 14:30 Note with specific time
 
+# Read from stdin (each line becomes a separate note)
+echo -e "First note\nSecond note\nThird note" | journey --stdin
+
+# Read from file
+cat notes.txt | journey --stdin
+
 # Force 12-hour format parsing (compact format, no quotes needed)
 journey --time 2:30PM --time-format 12h Note with 12h format
 
@@ -139,6 +145,7 @@ date: 2025-10-24
 - `-r, --relative-date <DAYS>`: Days ago (0 = today, 1 = yesterday)
 - `-t, --time <TIME>`: Specify time in HH:MM or HH:MM:SS format
 - `--time-format <FORMAT>`: Override time format (12h|24h)
+- `--stdin`: Read input from stdin (each line becomes a separate note)
 - `-v, --vault <NAME>`: Specify vault name
 - `-l, --list`: List notes
 - `-e, --edit`: Edit notes
@@ -200,6 +207,52 @@ journey --time 2:30PM --time-format 24h This will fail
 
 # This will fail - 24h time with 12h format override  
 journey --time 14:30 --time-format 12h This will fail
+```
+
+## Stdin Support
+
+Journey supports reading input from stdin, making it easy to pipe content from other commands or read from files. Each line of input becomes a separate note.
+
+### Basic Stdin Usage
+```bash
+# Read from stdin (each line becomes a separate note)
+echo -e "Meeting notes\nTask completed\nFollow up needed" | journey --stdin
+
+# Read from file
+cat meeting-notes.txt | journey --stdin
+
+# Pipe from other commands
+ls -la | head -5 | journey --stdin
+```
+
+### Stdin with Time/Date Overrides
+```bash
+# All notes get the same timestamp
+echo -e "Morning standup\nCode review\nDeployment" | journey --stdin --time 09:00
+
+# All notes get the same date
+echo -e "Weekend tasks\nPersonal notes" | journey --stdin --date 2025-10-25
+```
+
+### Use Cases
+- **Batch Processing**: Import multiple notes from files
+- **Command Integration**: Pipe output from other tools
+- **Automation**: Script-based note creation
+- **Data Migration**: Import notes from other systems
+
+### Examples
+```bash
+# Import from a text file
+cat daily-tasks.txt | journey --stdin
+
+# Import from a CSV (extract specific column)
+cut -d',' -f1 data.csv | journey --stdin
+
+# Import from a log file
+tail -n 10 app.log | journey --stdin
+
+# Import with specific time
+echo "Daily standup notes" | journey --stdin --time 09:00
 ```
 
 ## Development

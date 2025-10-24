@@ -38,6 +38,10 @@ pub struct Cli {
     #[arg(long)]
     pub time_format: Option<String>,
 
+    /// Read input from stdin (each line becomes a separate note)
+    #[arg(long)]
+    pub stdin: bool,
+
     /// Vault name to use (optional if only one vault exists)
     #[arg(short, long)]
     pub vault: Option<String>,

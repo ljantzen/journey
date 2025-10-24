@@ -97,3 +97,33 @@ fn test_cli_parse_edit_command_subcommand() {
         _ => panic!("Expected Edit command"),
     }
 }
+
+#[test]
+fn test_cli_parse_stdin_flag() {
+    let cli = Cli::try_parse_from(&["journey", "--stdin"]).unwrap();
+    assert!(cli.stdin);
+    assert!(cli.command.is_none());
+    assert!(!cli.list);
+    assert!(!cli.edit);
+}
+
+#[test]
+fn test_cli_parse_stdin_with_time() {
+    let cli = Cli::try_parse_from(&["journey", "--stdin", "--time", "14:30"]).unwrap();
+    assert!(cli.stdin);
+    assert_eq!(cli.time, Some("14:30".to_string()));
+}
+
+#[test]
+fn test_cli_parse_stdin_with_date() {
+    let cli = Cli::try_parse_from(&["journey", "--stdin", "--date", "2025-10-24"]).unwrap();
+    assert!(cli.stdin);
+    assert_eq!(cli.date, Some("2025-10-24".to_string()));
+}
+
+#[test]
+fn test_cli_parse_stdin_with_vault() {
+    let cli = Cli::try_parse_from(&["journey", "--stdin", "--vault", "test-vault"]).unwrap();
+    assert!(cli.stdin);
+    assert_eq!(cli.vault, Some("test-vault".to_string()));
+}

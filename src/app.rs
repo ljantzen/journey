@@ -98,6 +98,8 @@ impl App {
             self.list_notes(&cli_args)
         } else if cli.edit {
             self.edit_notes(&cli_args)
+        } else if cli.stdin {
+            self.handle_stdin_input(&cli_args)
         } else if let Some(note) = &cli.add_note {
             self.add_note(note, &cli_args)
         } else if !cli.note_content.is_empty() {
@@ -269,6 +271,37 @@ impl App {
         } else {
             Ok(None)
         }
+    }
+
+    fn handle_stdin_input(&mut self, cli: &CliArgs) -> Result<(), JourneyError> {
+        use std::io::{self, BufRead};
+        
+        let stdin = io::stdin();
+        let lines = stdin.lock().lines();
+        
+        let mut note_count = 0;
+        
+        for line in lines {
+            let line = line?;
+            let trimmed = line.trim();
+            
+            // Skip empty lines
+            if trimmed.is_empty() {
+                continue;
+            }
+            
+            // Add each line as a separate note
+            self.add_note(trimmed, cli)?;
+            note_count += 1;
+        }
+        
+        if note_count > 0 {
+            println!("Added {} notes from stdin", note_count);
+        } else {
+            println!("No content received from stdin");
+        }
+        
+        Ok(())
     }
 
     fn get_system_locale(&self) -> String {
