@@ -1,0 +1,10 @@
+vaults:
+  test:
+    name: test
+    path: /tmp/test-weekday-short
+    locale: en_US.UTF-8
+    phrases: {}
+    section_name: null
+    date_format: null
+    template_file: null
+    file_path_format: "notes/{weekday_short}_{year}-{month:02}-{date:02}.md"

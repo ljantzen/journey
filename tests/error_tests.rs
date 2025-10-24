@@ -19,7 +19,7 @@ fn test_journey_error_from_io_error() {
 fn test_journey_error_from_yaml_error() {
     // Create a YAML error by trying to parse invalid YAML
     let invalid_yaml = "invalid: yaml: content: [";
-    let yaml_error = serde_yaml::from_str::<serde_yaml::Value>(invalid_yaml).unwrap_err();
+    let yaml_error = serde_yaml_ng::from_str::<serde_yaml_ng::Value>(invalid_yaml).unwrap_err();
     let journey_error: JourneyError = yaml_error.into();
     assert!(matches!(journey_error, JourneyError::Yaml(_)));
 }

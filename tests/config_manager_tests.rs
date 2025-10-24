@@ -37,6 +37,7 @@ fn test_save_and_load_config() {
         section_name: None,
         date_format: None,
         template_file: None,
+        file_path_format: None,
     };
     config.add_vault(vault);
     

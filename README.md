@@ -271,7 +271,7 @@ journey "@meeting went well, then @lunch"
 
 ## File Structure
 
-Notes are stored as markdown files with the following structure:
+Notes are by default stored as markdown files with the following structure:
 
 ```
 vault-directory/
@@ -280,15 +280,61 @@ vault-directory/
 └── 2025-10-22.md
 ```
 
-Each markdown file contains:
+Each markdown file contains by default:
 ```markdown
 ---
 date: 2025-10-24
 ---
 
-- [2025-10-24 13:35:27] This is my first note
-- [2025-10-24 13:35:35] This is my second note
+- [13:35:27] This is my first note
+- [13:35:35] This is my second note
 ```
+
+This can be changed by using templates, see further down. 
+
+
+### Custom File Path Formats
+
+Journey supports custom file path formats to organize your notes in any directory structure. Here is an example:
+
+```yaml
+vaults:
+  work:
+    name: work
+    path: /home/user/work-journal
+    locale: en_US.UTF-8
+    file_path_format: "work/{year}/{month:02}/{date:02}.md"
+```
+
+**Supported Placeholders:**
+- `{year}` - Full year (e.g., 2025)
+- `{month}` - Month number (e.g., 10)
+- `{month:02}` - Zero-padded month (e.g., 10, 03)
+- `{date}` - Day number (e.g., 24)
+- `{date:02}` - Zero-padded day (e.g., 24, 05)
+- `{day}` - Alias for `{date}`
+- `{Weekday}` - Full weekday name capitalized (e.g., Monday, Tuesday)
+- `{weekday}` - Full weekday name lowercase (e.g., monday, tuesday)
+- `{Weekday_short}` - Short weekday name capitalized (e.g., Mon, Tue)
+- `{weekday_short}` - Short weekday name lowercase (e.g., mon, tue)
+- `{Month}` - Full month name capitalized (e.g., January, February)
+- `{month_name}` - Full month name lowercase (e.g., january, february)
+- `{Month_short}` - Short month name capitalized (e.g., Jan, Feb)
+- `{month_short}` - Short month name lowercase (e.g., jan, feb)
+
+**Example Formats:**
+- `"work/{year}/{month:02}/{date:02}.md"` → `work/2025/10/24.md`
+- `"journals/{year}/{month}/{day}.md"` → `journals/2025/10/24.md`
+- `"daily/{year}-{month:02}-{date:02}.md"` → `daily/2025-10-24.md`
+- `"notes/{Weekday}/{year}-{month:02}-{date:02}.md"` → `notes/Friday/2025-10-24.md`
+- `"daily/{weekday_short}_{year}-{month:02}-{date:02}.md"` → `daily/fri_2025-10-24.md`
+- `"logs/{weekday}/{Weekday_short}_{year}-{month:02}-{date:02}.md"` → `logs/friday/Fri_2025-10-24.md`
+- `"archives/{Month}/{year}-{month:02}-{date:02}.md"` → `archives/October/2025-10-24.md`
+- `"logs/{month_name}/{Month_short}_{year}-{month:02}-{date:02}.md"` → `logs/october/Oct_2025-10-24.md`
+
+**Default Behavior:**
+If no `file_path_format` is specified, notes are stored as `YYYY-MM-DD.md` in the vault root directory.
+
 
 ## Options
 

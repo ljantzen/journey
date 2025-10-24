@@ -15,7 +15,7 @@ vaults:
     section_name: null
     date_format: null  # Optional: YYYY-MM-DD, MM/DD/YYYY, DD.MM.YYYY, etc.
 
-  # Example vault with date format override, section, and template
+  # Example vault with date format override, section, template, and custom file path
   work:
     name: work
     path: ~/Documents/work-journal
@@ -28,6 +28,11 @@ vaults:
     section_name: "Daily Standup"  # Notes will be added to this section
     date_format: YYYY-MM-DD  # Force ISO format (also supports MM/DD/YYYY, DD.MM.YYYY, etc.)
     template_file: ~/Documents/templates/work-daily.md  # Template for new files
+    file_path_format: "work/{year}/{month:02}/{date:02}.md"  # Custom file path structure
+    # Alternative: "daily/{Weekday}/{year}-{month:02}-{date:02}.md"  # Organize by weekday (capitalized)
+    # Alternative: "logs/{weekday}/{Weekday_short}_{year}-{month:02}-{date:02}.md"  # Mixed case
+    # Alternative: "archives/{Month}/{year}-{month:02}-{date:02}.md"  # Organize by month name
+    # Alternative: "logs/{month_name}/{Month_short}_{year}-{month:02}-{date:02}.md"  # Mixed month case
 
   # Example vault with European date format, section, and template
   european:
@@ -55,6 +60,12 @@ vaults:
 #   Supported formats: YYYY-MM-DD, MM/DD/YYYY, DD.MM.YYYY, DD/MM/YYYY, MM-DD-YYYY, DD-MM-YYYY
 #   Or any chrono format string like "%Y-%m-%d", "%m/%d/%Y", etc.
 # - template_file: Optional template file for new markdown files (null = use default template)
+# - file_path_format: Optional custom file path format (null = use default YYYY-MM-DD.md)
+#   Supported placeholders: {year}, {month}, {date}, {day}, {Weekday}, {weekday}, {Weekday_short}, {weekday_short}
+#   Month names: {Month}, {month_name}, {Month_short}, {month_short}
+#   Zero-padding: {month:02}, {date:02}, {day:02}
+#   Weekday formats: {Weekday} (Friday), {weekday} (friday), {Weekday_short} (Fri), {weekday_short} (fri)
+#   Month formats: {Month} (October), {month_name} (october), {Month_short} (Oct), {month_short} (oct)
 #
 # Supported date formats:
 # - YYYY-MM-DD (ISO format)

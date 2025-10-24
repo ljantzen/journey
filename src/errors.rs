@@ -9,7 +9,7 @@ pub enum JourneyError {
     Io(#[from] std::io::Error),
 
     #[error("YAML parsing error: {0}")]
-    Yaml(#[from] serde_yaml::Error),
+    Yaml(#[from] serde_yaml_ng::Error),
 
     #[error("Date/time parsing error: {0}")]
     DateTime(#[from] chrono::ParseError),

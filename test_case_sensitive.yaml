@@ -1,0 +1,10 @@
+vaults:
+  test:
+    name: test
+    path: /tmp/test-case-sensitive
+    locale: en_US.UTF-8
+    phrases: {}
+    section_name: null
+    date_format: null
+    template_file: null
+    file_path_format: "test_{Weekday}_{weekday}_{Weekday_short}_{weekday_short}.md"

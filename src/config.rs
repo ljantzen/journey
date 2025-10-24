@@ -16,6 +16,7 @@ pub struct VaultConfig {
     pub section_name: Option<String>,
     pub date_format: Option<String>,
     pub template_file: Option<String>,
+    pub file_path_format: Option<String>,
 }
 
 impl Default for Config {

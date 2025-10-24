@@ -33,12 +33,12 @@ impl ConfigManager {
         }
 
         let content = fs::read_to_string(&self.config_path)?;
-        let config: Config = serde_yaml::from_str(&content)?;
+        let config: Config = serde_yaml_ng::from_str(&content)?;
         Ok(config)
     }
 
     pub fn save_config(&self, config: &Config) -> Result<(), JourneyError> {
-        let content = serde_yaml::to_string(config)?;
+        let content = serde_yaml_ng::to_string(config)?;
         fs::write(&self.config_path, content)?;
         Ok(())
     }

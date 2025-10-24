@@ -1,7 +1,7 @@
 use crate::config::VaultConfig;
 use crate::date_time::DateTimeHandler;
 use crate::errors::JourneyError;
-use chrono::{DateTime, Local, NaiveDate};
+use chrono::{DateTime, Local, NaiveDate, Datelike, Weekday};
 use std::fs;
 use std::path::PathBuf;
 
@@ -20,8 +20,15 @@ impl Vault {
     }
 
     pub fn get_note_path(&self, date: NaiveDate) -> PathBuf {
-        let date_str = self.date_handler.format_date(date);
-        self.config.path.join(format!("{}.md", date_str))
+        if let Some(ref format) = self.config.file_path_format {
+            // Use custom file path format
+            let formatted_path = self.format_custom_path(format, date);
+            self.config.path.join(formatted_path)
+        } else {
+            // Use default format: YYYY-MM-DD.md
+            let date_str = self.date_handler.format_date(date);
+            self.config.path.join(format!("{}.md", date_str))
+        }
     }
 
     pub fn add_note(&self, content: &str, timestamp: Option<DateTime<Local>>) -> Result<(), JourneyError> {
@@ -197,6 +204,75 @@ impl Vault {
         }
         
         result
+    }
+
+    /// Format a custom file path using date components
+    fn format_custom_path(&self, format: &str, date: NaiveDate) -> String {
+        let year = date.year();
+        let month = date.month();
+        let day = date.day();
+        let weekday = date.weekday();
+        
+        let mut result = format.to_string();
+        
+        // Replace year
+        result = result.replace("{year}", &year.to_string());
+        
+        // Replace month with zero-padding
+        result = result.replace("{month:02}", &format!("{:02}", month));
+        result = result.replace("{month}", &month.to_string());
+        
+        // Replace day/date with zero-padding
+        result = result.replace("{day:02}", &format!("{:02}", day));
+        result = result.replace("{date:02}", &format!("{:02}", day));
+        result = result.replace("{day}", &day.to_string());
+        result = result.replace("{date}", &day.to_string());
+        
+        // Replace weekday names (case-sensitive)
+        result = result.replace("{Weekday}", &self.format_weekday(weekday, false));
+        result = result.replace("{weekday}", &self.format_weekday(weekday, false).to_lowercase());
+        result = result.replace("{Weekday_short}", &self.format_weekday(weekday, true));
+        result = result.replace("{weekday_short}", &self.format_weekday(weekday, true).to_lowercase());
+        
+        // Replace month names (case-sensitive)
+        result = result.replace("{Month}", &self.format_month(month, false));
+        result = result.replace("{month_name}", &self.format_month(month, false).to_lowercase());
+        result = result.replace("{Month_short}", &self.format_month(month, true));
+        result = result.replace("{month_short}", &self.format_month(month, true).to_lowercase());
+        
+        result
+    }
+    
+    /// Format weekday name (full or short)
+    fn format_weekday(&self, weekday: Weekday, short: bool) -> String {
+        match weekday {
+            Weekday::Mon => if short { "Mon".to_string() } else { "Monday".to_string() },
+            Weekday::Tue => if short { "Tue".to_string() } else { "Tuesday".to_string() },
+            Weekday::Wed => if short { "Wed".to_string() } else { "Wednesday".to_string() },
+            Weekday::Thu => if short { "Thu".to_string() } else { "Thursday".to_string() },
+            Weekday::Fri => if short { "Fri".to_string() } else { "Friday".to_string() },
+            Weekday::Sat => if short { "Sat".to_string() } else { "Saturday".to_string() },
+            Weekday::Sun => if short { "Sun".to_string() } else { "Sunday".to_string() },
+        }
+    }
+    
+    /// Format month name (full or short)
+    fn format_month(&self, month: u32, short: bool) -> String {
+        match month {
+            1 => if short { "Jan".to_string() } else { "January".to_string() },
+            2 => if short { "Feb".to_string() } else { "February".to_string() },
+            3 => if short { "Mar".to_string() } else { "March".to_string() },
+            4 => if short { "Apr".to_string() } else { "April".to_string() },
+            5 => if short { "May".to_string() } else { "May".to_string() },
+            6 => if short { "Jun".to_string() } else { "June".to_string() },
+            7 => if short { "Jul".to_string() } else { "July".to_string() },
+            8 => if short { "Aug".to_string() } else { "August".to_string() },
+            9 => if short { "Sep".to_string() } else { "September".to_string() },
+            10 => if short { "Oct".to_string() } else { "October".to_string() },
+            11 => if short { "Nov".to_string() } else { "November".to_string() },
+            12 => if short { "Dec".to_string() } else { "December".to_string() },
+            _ => "Unknown".to_string(),
+        }
     }
 }
 

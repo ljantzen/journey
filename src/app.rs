@@ -138,6 +138,7 @@ impl App {
             section_name: None,
             date_format: None,
             template_file: None,
+            file_path_format: None,
         };
 
         // Add to config and save

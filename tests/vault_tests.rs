@@ -15,6 +15,7 @@ fn create_test_vault() -> (Vault, TempDir) {
         section_name: None,
         date_format: None,
         template_file: None,
+        file_path_format: None,
     };
     (Vault::new(config), temp_dir)
 }
@@ -117,6 +118,7 @@ fn test_vault_with_section() {
         section_name: Some("Daily Notes".to_string()),
         date_format: None,
         template_file: None,
+        file_path_format: None,
     };
     let vault = Vault::new(config);
     let date = NaiveDate::from_ymd_opt(2025, 10, 24).unwrap();
@@ -178,6 +180,7 @@ fn test_add_note_to_existing_section() {
         section_name: Some("Daily Notes".to_string()),
         date_format: None,
         template_file: None,
+        file_path_format: None,
     };
     let vault = Vault::new(config);
     
@@ -219,6 +222,7 @@ fn test_add_note_create_missing_section() {
         section_name: Some("Daily Notes".to_string()),
         date_format: None,
         template_file: None,
+        file_path_format: None,
     };
     let vault = Vault::new(config);
     
@@ -255,6 +259,7 @@ fn test_add_note_to_section_new_file() {
         section_name: Some("Daily Notes".to_string()),
         date_format: None,
         template_file: None,
+        file_path_format: None,
     };
     let vault = Vault::new(config);
     
@@ -307,6 +312,7 @@ time: {{time}}
         section_name: Some("Daily Notes".to_string()),
         date_format: None,
         template_file: Some(template_path.to_str().unwrap().to_string()),
+        file_path_format: None,
     };
     let vault = Vault::new(config);
     
@@ -358,6 +364,7 @@ date: {{date}}
         section_name: Some("Daily Notes".to_string()),
         date_format: None,
         template_file: Some(template_path.to_str().unwrap().to_string()),
+        file_path_format: None,
     };
     let vault = Vault::new(config);
     
@@ -390,6 +397,7 @@ fn test_add_note_with_template_missing_file() {
         section_name: None,
         date_format: None,
         template_file: Some("/nonexistent/template.md".to_string()),
+        file_path_format: None,
     };
     let vault = Vault::new(config);
     
@@ -437,6 +445,7 @@ datetime: {{datetime}}
         section_name: Some("Daily Notes".to_string()),
         date_format: None,
         template_file: Some(template_path.to_str().unwrap().to_string()),
+        file_path_format: None,
     };
     let vault = Vault::new(config);
     
@@ -512,4 +521,140 @@ fn test_phrase_expansion_longest_first() {
     // Verify longer phrase was matched, not the shorter one
     assert!(content.contains("Gym session completed"));
     assert!(!content.contains("Working"));
+}
+
+#[test]
+fn test_custom_file_path_format() {
+    let temp_dir = TempDir::new().unwrap();
+    let config = VaultConfig {
+        name: "test".to_string(),
+        path: temp_dir.path().to_path_buf(),
+        locale: "en-US".to_string(),
+        phrases: HashMap::new(),
+        section_name: None,
+        date_format: None,
+        template_file: None,
+        file_path_format: Some("work/{year}/{month}/{date}.md".to_string()),
+    };
+    let vault = Vault::new(config);
+    
+    let date = NaiveDate::from_ymd_opt(2025, 10, 24).unwrap();
+    let note_path = vault.get_note_path(date);
+    
+    // Verify the path uses the custom format
+    assert!(note_path.to_string_lossy().contains("work/2025/10/24.md"));
+}
+
+#[test]
+fn test_custom_file_path_format_with_day() {
+    let temp_dir = TempDir::new().unwrap();
+    let config = VaultConfig {
+        name: "test".to_string(),
+        path: temp_dir.path().to_path_buf(),
+        locale: "en-US".to_string(),
+        phrases: HashMap::new(),
+        section_name: None,
+        date_format: None,
+        template_file: None,
+        file_path_format: Some("journals/{year}/{month:02}/{day:02}.md".to_string()),
+    };
+    let vault = Vault::new(config);
+    
+    let date = NaiveDate::from_ymd_opt(2025, 3, 5).unwrap();
+    let note_path = vault.get_note_path(date);
+    
+    // Verify the path uses the custom format with zero-padded values
+    assert!(note_path.to_string_lossy().contains("journals/2025/03/05.md"));
+}
+
+#[test]
+fn test_custom_file_path_format_with_weekday() {
+    let temp_dir = TempDir::new().unwrap();
+    let config = VaultConfig {
+        name: "test".to_string(),
+        path: temp_dir.path().to_path_buf(),
+        locale: "en-US".to_string(),
+        phrases: HashMap::new(),
+        section_name: None,
+        date_format: None,
+        template_file: None,
+        file_path_format: Some("daily/{Weekday}/{year}-{month:02}-{date:02}.md".to_string()),
+    };
+    let vault = Vault::new(config);
+    
+    // Test with a known weekday (2025-10-24 is a Friday)
+    let date = NaiveDate::from_ymd_opt(2025, 10, 24).unwrap();
+    let note_path = vault.get_note_path(date);
+    
+    // Verify the path uses the custom format with weekday
+    assert!(note_path.to_string_lossy().contains("daily/Friday/2025-10-24.md"));
+}
+
+#[test]
+fn test_custom_file_path_format_with_short_weekday() {
+    let temp_dir = TempDir::new().unwrap();
+    let config = VaultConfig {
+        name: "test".to_string(),
+        path: temp_dir.path().to_path_buf(),
+        locale: "en-US".to_string(),
+        phrases: HashMap::new(),
+        section_name: None,
+        date_format: None,
+        template_file: None,
+        file_path_format: Some("notes/{Weekday_short}_{year}-{month:02}-{date:02}.md".to_string()),
+    };
+    let vault = Vault::new(config);
+    
+    // Test with a known weekday (2025-10-24 is a Friday)
+    let date = NaiveDate::from_ymd_opt(2025, 10, 24).unwrap();
+    let note_path = vault.get_note_path(date);
+    
+    // Verify the path uses the custom format with short weekday
+    assert!(note_path.to_string_lossy().contains("notes/Fri_2025-10-24.md"));
+}
+
+#[test]
+fn test_custom_file_path_format_case_sensitive_weekday() {
+    let temp_dir = TempDir::new().unwrap();
+    let config = VaultConfig {
+        name: "test".to_string(),
+        path: temp_dir.path().to_path_buf(),
+        locale: "en-US".to_string(),
+        phrases: HashMap::new(),
+        section_name: None,
+        date_format: None,
+        template_file: None,
+        file_path_format: Some("test_{Weekday}_{weekday}_{Weekday_short}_{weekday_short}.md".to_string()),
+    };
+    let vault = Vault::new(config);
+    
+    // Test with a known weekday (2025-10-24 is a Friday)
+    let date = NaiveDate::from_ymd_opt(2025, 10, 24).unwrap();
+    let note_path = vault.get_note_path(date);
+    
+    // Verify the path uses case-sensitive weekday formats
+    assert!(note_path.to_string_lossy().contains("test_Friday_friday_Fri_fri.md"));
+}
+
+#[test]
+fn test_custom_file_path_format_case_sensitive_month() {
+    let temp_dir = TempDir::new().unwrap();
+    let config = VaultConfig {
+        name: "test".to_string(),
+        path: temp_dir.path().to_path_buf(),
+        locale: "en-US".to_string(),
+        phrases: HashMap::new(),
+        section_name: None,
+        date_format: None,
+        template_file: None,
+        file_path_format: Some("test_{Month}_{month_name}_{Month_short}_{month_short}.md".to_string()),
+    };
+    let vault = Vault::new(config);
+    
+    // Test with October (month 10)
+    let date = NaiveDate::from_ymd_opt(2025, 10, 24).unwrap();
+    let note_path = vault.get_note_path(date);
+    
+    // Verify the path uses case-sensitive month formats
+    assert!(note_path.to_string_lossy().contains("test_October_october_Oct_oct.md"));
 }

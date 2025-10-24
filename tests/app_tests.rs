@@ -60,6 +60,7 @@ fn test_app_creation() {
         section_name: None,
         date_format: None,
         template_file: None,
+        file_path_format: None,
     };
     config.add_vault(vault_config);
     
@@ -81,6 +82,7 @@ fn test_single_vault_auto_selection() {
         section_name: None,
         date_format: None,
         template_file: None,
+        file_path_format: None,
     };
     config.add_vault(vault_config);
     
@@ -108,6 +110,7 @@ fn test_multiple_vaults_require_specification() {
         section_name: None,
         date_format: None,
         template_file: None,
+        file_path_format: None,
     };
     
     let vault2 = VaultConfig {
@@ -118,6 +121,7 @@ fn test_multiple_vaults_require_specification() {
         section_name: None,
         date_format: None,
         template_file: None,
+        file_path_format: None,
     };
     
     config.add_vault(vault1);
@@ -282,6 +286,7 @@ fn test_production_config_isolation() {
         section_name: None,
         date_format: None,
         template_file: None,
+        file_path_format: None,
     };
     test_config.add_vault(vault_config);
     
@@ -316,6 +321,7 @@ fn test_add_note_future_date_absolute() {
         section_name: None,
         date_format: None,
         template_file: None,
+        file_path_format: None,
     };
     config.add_vault(vault_config);
     
@@ -350,6 +356,7 @@ fn test_add_note_future_date_relative() {
         section_name: None,
         date_format: None,
         template_file: None,
+        file_path_format: None,
     };
     config.add_vault(vault_config);
     
@@ -383,6 +390,7 @@ fn test_add_note_intuitive_relative_dates() {
         section_name: None,
         date_format: None,
         template_file: None,
+        file_path_format: None,
     };
     config.add_vault(vault_config);
     
