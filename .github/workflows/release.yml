@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  push:
+    tags:
+      # Trigger on version tag push like v1.0.0
+      - 'v*'
+  workflow_dispatch:
+
+# Add permissions configuration
+permissions:
+  contents: write  # Required for creating releases and uploading assets
+
+jobs:
+  release:
+    name: Build and Release Binaries
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build binary
+        run: cargo build --release
+
+      - name: Package binary (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          mkdir -p dist
+          cp target/release/journey.exe dist/obsidian-logging.exe
+          cd dist
+          Compress-Archive -Path journey.exe -DestinationPath obsidian-logging-windows-latest.zip
+        shell: pwsh
+
+      - name: Package binary (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p dist
+          cp target/release/journey dist/obsidian-logging
+          cd dist
+          tar -czvf journey-${{ runner.os }}.tar.gz obsidian-logging
+        shell: bash
+
+      - name: Create GitHub Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          draft: false
+          files: |
+            dist/*.tar.gz
+            dist/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
