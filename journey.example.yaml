@@ -7,7 +7,11 @@ vaults:
     name: personal
     path: ~/Documents/journey
     locale: en_US.UTF-8
-    phrases: {}
+    phrases:
+      "@meeting": "Team meeting about project status"
+      "@lunch": "Had lunch at the usual place"
+      "@work": "Working on important tasks"
+      "@gym": "Gym session completed"
     section_name: null
     date_format: null  # Optional: YYYY-MM-DD, MM/DD/YYYY, DD.MM.YYYY, etc.
 
@@ -16,7 +20,11 @@ vaults:
     name: work
     path: ~/Documents/work-journal
     locale: en_US.UTF-8
-    phrases: {}
+    phrases:
+      "@standup": "Daily standup meeting completed"
+      "@code": "Coding session on main project"
+      "@review": "Code review completed"
+      "@deploy": "Deployment to production"
     section_name: "Daily Standup"  # Notes will be added to this section
     date_format: YYYY-MM-DD  # Force ISO format (also supports MM/DD/YYYY, DD.MM.YYYY, etc.)
     template_file: ~/Documents/templates/work-daily.md  # Template for new files
@@ -26,7 +34,11 @@ vaults:
     name: european
     path: ~/Documents/european-journal
     locale: no_NO.UTF-8
-    phrases: {}
+    phrases:
+      "@møte": "Møte med teamet om prosjektstatus"
+      "@lunsj": "Hadde lunsj på det vanlige stedet"
+      "@arbeid": "Arbeidet med viktige oppgaver"
+      "@trening": "Treningsøkt fullført"
     section_name: "Daglige Notater"  # Norwegian section name
     date_format: DD.MM.YYYY  # European date format
     template_file: ~/Documents/templates/european-daily.md  # Template for new files
@@ -36,7 +48,8 @@ vaults:
 # - name: Unique identifier for the vault
 # - path: Directory where notes are stored (supports ~ for home directory)
 # - locale: System locale for date/time parsing (e.g., en_US.UTF-8, no_NO.UTF-8)
-# - phrases: Custom phrases for quick note insertion (currently unused)
+# - phrases: Custom phrases for quick note insertion (key: value pairs)
+#   When you type a phrase key in a note, it gets automatically replaced with the value
 # - section_name: Optional markdown section name for organizing notes (null = append to end)
 # - date_format: Optional date format override (null = use locale-based parsing)
 #   Supported formats: YYYY-MM-DD, MM/DD/YYYY, DD.MM.YYYY, DD/MM/YYYY, MM-DD-YYYY, DD-MM-YYYY

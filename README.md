@@ -235,6 +235,40 @@ vaults:
     section_name: null
 ```
 
+### Phrase Expansion
+
+Journey supports custom phrase expansion to make note-taking faster. Define phrases in your vault configuration:
+
+```yaml
+vaults:
+  work:
+    name: work
+    path: /home/user/work-journal
+    locale: en_US.UTF-8
+    phrases:
+      "@meeting": "Team meeting about project status"
+      "@lunch": "Had lunch at the usual place"
+      "@code": "Coding session on main project"
+      "@review": "Code review completed"
+    section_name: "Daily Standup"
+```
+
+When you add a note containing a phrase key, it gets automatically replaced with the corresponding value:
+
+```bash
+# This note:
+journey "@meeting went well, then @lunch"
+
+# Becomes this in your journal:
+# - [14:30:00] Team meeting about project status went well, then Had lunch at the usual place
+```
+
+**Phrase Features:**
+- **Longest match first**: If you have `@work` and `@workout`, typing `@workout` will match the longer phrase
+- **Multiple phrases**: You can use multiple phrases in a single note
+- **Case sensitive**: Phrases are matched exactly as defined
+- **Global replacement**: All occurrences of a phrase in a note are replaced
+
 ## File Structure
 
 Notes are stored as markdown files with the following structure:

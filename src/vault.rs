@@ -34,8 +34,10 @@ impl Vault {
             fs::create_dir_all(parent)?;
         }
 
+        // Expand phrases in the content
+        let expanded_content = self.expand_phrases(content);
         let formatted_time = self.date_handler.format_datetime(timestamp);
-        let note_entry = format!("- [{}] {}\n", formatted_time, content);
+        let note_entry = format!("- [{}] {}\n", formatted_time, expanded_content);
 
         // Check if file exists and has content
         if note_path.exists() {
@@ -179,6 +181,22 @@ impl Vault {
 
     pub fn get_editor_path(&self, date: NaiveDate) -> PathBuf {
         self.get_note_path(date)
+    }
+
+    /// Expand phrases in the content using the vault's phrase mappings
+    fn expand_phrases(&self, content: &str) -> String {
+        let mut result = content.to_string();
+        
+        // Sort phrases by length (longest first) to avoid partial replacements
+        let mut phrases: Vec<_> = self.config.phrases.iter().collect();
+        phrases.sort_by(|a, b| b.0.len().cmp(&a.0.len()));
+        
+        for (phrase, replacement) in phrases {
+            // Replace all occurrences of the phrase with its replacement
+            result = result.replace(phrase, replacement);
+        }
+        
+        result
     }
 }
 

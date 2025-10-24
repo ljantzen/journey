@@ -459,3 +459,57 @@ datetime: {{datetime}}
     assert!(content.contains("# Daily Notes"));
     assert!(content.contains("Test note for specific date"));
 }
+
+#[test]
+fn test_phrase_expansion() {
+    let (vault, _temp_dir) = create_test_vault();
+    
+    // Add some phrases to the vault config
+    let mut config = vault.config.clone();
+    config.phrases.insert("@meeting".to_string(), "Meeting with team about project status".to_string());
+    config.phrases.insert("@lunch".to_string(), "Had lunch at the usual place".to_string());
+    config.phrases.insert("@work".to_string(), "Working on important tasks".to_string());
+    
+    let vault_with_phrases = Vault::new(config);
+    
+    // Test phrase expansion
+    vault_with_phrases.add_note("@meeting went well", None).unwrap();
+    vault_with_phrases.add_note("@lunch and then @work", None).unwrap();
+    
+    let date = NaiveDate::from_ymd_opt(2025, 10, 24).unwrap();
+    let note_path = vault_with_phrases.get_note_path(date);
+    let content = std::fs::read_to_string(&note_path).unwrap();
+    
+    // Verify phrases were expanded
+    assert!(content.contains("Meeting with team about project status"));
+    assert!(content.contains("Had lunch at the usual place"));
+    assert!(content.contains("Working on important tasks"));
+    
+    // Verify original phrases are not in the content
+    assert!(!content.contains("@meeting"));
+    assert!(!content.contains("@lunch"));
+    assert!(!content.contains("@work"));
+}
+
+#[test]
+fn test_phrase_expansion_longest_first() {
+    let (vault, _temp_dir) = create_test_vault();
+    
+    // Add phrases where one is a substring of another
+    let mut config = vault.config.clone();
+    config.phrases.insert("@work".to_string(), "Working".to_string());
+    config.phrases.insert("@workout".to_string(), "Gym session completed".to_string());
+    
+    let vault_with_phrases = Vault::new(config);
+    
+    // Test that longer phrase is matched first
+    vault_with_phrases.add_note("Did @workout today", None).unwrap();
+    
+    let date = NaiveDate::from_ymd_opt(2025, 10, 24).unwrap();
+    let note_path = vault_with_phrases.get_note_path(date);
+    let content = std::fs::read_to_string(&note_path).unwrap();
+    
+    // Verify longer phrase was matched, not the shorter one
+    assert!(content.contains("Gym session completed"));
+    assert!(!content.contains("Working"));
+}
