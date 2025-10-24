@@ -237,32 +237,49 @@ template_file: "%USERPROFILE%/Documents/%USERNAME%_templates/journal.md"
 #### Template Variables
 Templates support the following variables that are automatically replaced:
 
-- `{{date}}` - Date of the note being added (formatted according to vault settings)
-- `{{time}}` - Time of the note being added (HH:MM:SS format)
-- `{{datetime}}` - Date and time of the note being added
-- `{{section_name}}` - The configured section name (if any)
-- `{{note}}` - The note content (optional placeholder)
+**Date and Time Variables:**
+- `{{date}}` / `{date}` - Date of the note being added (formatted according to vault settings)
+- `{{time}}` / `{time}` - Time of the note being added (HH:MM:SS format)
+- `{{datetime}}` / `{datetime}` - Date and time of the note being added
+- `{{created}}` / `{created}` - Full timestamp when the note was created (YYYY-MM-DD HH:MM:SS)
+- `{{today}}` / `{today}` - Today's date (same as date, for clarity)
+
+**Relative Date Variables:**
+- `{{yesterday}}` / `{yesterday}` - Yesterday's date (same format as note filenames)
+- `{{tomorrow}}` / `{tomorrow}` - Tomorrow's date (same format as note filenames)
+
+**Weekday Variables:**
+- `{{weekday}}` / `{weekday}` - Full weekday name (Monday, Tuesday, etc.)
+- `{{Weekday}}` / `{Weekday}` - Abbreviated weekday name (Mon, Tue, etc.)
+
+**Other Variables:**
+- `{{section_name}}` / `{section_name}` - The configured section name (if any)
+- `{{note}}` / `{note}` - The note content (optional placeholder)
+
+**Note**: Both single `{variable}` and double `{{variable}}` brace formats are supported for compatibility.
 
 **Important**: Template variables reflect the date/time of the note being added, not the current date/time. This means when adding notes to different dates, the template variables will show the note's date/time, not when the template was processed.
 
 #### Example Template
 ```markdown
 ---
-date: {{date}}
-time: {{time}}
+created: {created}
+updated: {created}
 ---
 
-# {{section_name}}
+[[{yesterday}]] [[{tomorrow}]]
 
-## Morning
-{{note}}
+## 📅️ {today} {weekday}
 
-## Afternoon
-- [ ] Task 1
-- [ ] Task 2
+## 🎯
 
-## Evening
-- Reflection: 
+## 🕗
+
+## 🔨
+
+## 👀️
+
+{note}
 ```
 
 #### Template Behavior

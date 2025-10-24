@@ -131,16 +131,50 @@ impl Vault {
         processed_content = processed_content.replace("{{time}}", &self.date_handler.format_time(timestamp.time()));
         processed_content = processed_content.replace("{{datetime}}", &self.date_handler.format_datetime(timestamp));
         
+        // Additional template variables
+        // Yesterday and tomorrow dates - use same format as note filenames
+        let yesterday_date = date - chrono::Duration::days(1);
+        let tomorrow_date = date + chrono::Duration::days(1);
+        let yesterday = self.date_handler.format_date(yesterday_date);
+        let tomorrow = self.date_handler.format_date(tomorrow_date);
+        processed_content = processed_content.replace("{yesterday}", &yesterday);
+        processed_content = processed_content.replace("{tomorrow}", &tomorrow);
+        processed_content = processed_content.replace("{{yesterday}}", &yesterday);
+        processed_content = processed_content.replace("{{tomorrow}}", &tomorrow);
+        
+        // Weekday (lowercase) - full weekday name
+        let weekday = date.format("%A").to_string();
+        processed_content = processed_content.replace("{weekday}", &weekday);
+        processed_content = processed_content.replace("{{weekday}}", &weekday);
+        
+        // Weekday (uppercase) - abbreviated weekday name
+        let weekday_short = date.format("%a").to_string();
+        processed_content = processed_content.replace("{Weekday}", &weekday_short);
+        processed_content = processed_content.replace("{{Weekday}}", &weekday_short);
+        
+        // Additional variables
+        // Created timestamp
+        let created = timestamp.format("%Y-%m-%d %H:%M:%S").to_string();
+        processed_content = processed_content.replace("{created}", &created);
+        processed_content = processed_content.replace("{{created}}", &created);
+        
+        // Today's date
+        let today = self.date_handler.format_date(date);
+        processed_content = processed_content.replace("{today}", &today);
+        processed_content = processed_content.replace("{{today}}", &today);
+        
         // Handle section name replacement
         if let Some(section_name) = &self.config.section_name {
             processed_content = processed_content.replace("{{section_name}}", section_name);
+            processed_content = processed_content.replace("{section_name}", section_name);
         }
         
         // If the template doesn't contain a placeholder for notes, append the note
-        if !processed_content.contains("{{note}}") {
+        if !processed_content.contains("{{note}}") && !processed_content.contains("{note}") {
             processed_content.push_str(note_entry);
         } else {
             processed_content = processed_content.replace("{{note}}", note_entry);
+            processed_content = processed_content.replace("{note}", note_entry);
         }
         
         Ok(processed_content)
