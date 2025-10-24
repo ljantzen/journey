@@ -28,7 +28,7 @@ cargo build --release
 
 2. **Add a note**:
    ```bash
-   journey "This is my first note"
+   journey This is my first note
    ```
 
 3. **List today's notes**:
@@ -38,7 +38,7 @@ cargo build --release
 
 4. **Add a note for yesterday**:
    ```bash
-   journey --relative-date 1 "Note for yesterday"
+   journey --relative-date 1 Note for yesterday
    ```
 
 ## Commands
