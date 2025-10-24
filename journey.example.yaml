@@ -1,0 +1,54 @@
+# Journey Configuration Example
+# Copy this file to ~/.config/journey/journey.yaml and customize as needed
+
+vaults:
+  # Example vault with all options
+  personal:
+    name: personal
+    path: ~/Documents/journey
+    locale: en_US.UTF-8
+    phrases: {}
+    section_name: null
+    date_format: null  # Optional: YYYY-MM-DD, MM/DD/YYYY, DD.MM.YYYY, etc.
+
+  # Example vault with date format override
+  work:
+    name: work
+    path: ~/Documents/work-journal
+    locale: en_US.UTF-8
+    phrases: {}
+    section_name: "Daily Standup"
+    date_format: YYYY-MM-DD  # Force ISO format
+
+  # Example vault with European date format
+  european:
+    name: european
+    path: ~/Documents/european-journal
+    locale: no_NO.UTF-8
+    phrases: {}
+    section_name: null
+    date_format: DD.MM.YYYY  # European date format
+
+# Configuration Notes:
+# 
+# - name: Unique identifier for the vault
+# - path: Directory where notes are stored (supports ~ for home directory)
+# - locale: System locale for date/time parsing (e.g., en_US.UTF-8, no_NO.UTF-8)
+# - phrases: Custom phrases for quick note insertion (currently unused)
+# - section_name: Optional markdown section name for organizing notes
+# - date_format: Optional date format override (null = use locale-based parsing)
+#
+# Supported date formats:
+# - YYYY-MM-DD (ISO format)
+# - MM/DD/YYYY (US format)
+# - DD.MM.YYYY (European format)
+# - DD/MM/YYYY (European format)
+# - MM-DD-YYYY (US with dashes)
+# - DD-MM-YYYY (European with dashes)
+# - Custom chrono format strings (e.g., %Y/%m/%d)
+#
+# Example usage:
+# 1. Copy this file to ~/.config/journey/journey.yaml
+# 2. Customize the vault paths and settings
+# 3. Run 'journey init --path /your/path --name your-vault' to create vaults
+# 4. Use 'journey --vault your-vault' to specify which vault to use
