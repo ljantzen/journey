@@ -1,11 +1,15 @@
 [package]
-name = "journey"
+name = "journey-cli"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
 name = "journey"
 path = "src/lib.rs"
+
+[[bin]]
+name = "journey"
+path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.4", features = ["derive"] }
