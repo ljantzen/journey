@@ -199,9 +199,17 @@ fn test_init_vault_with_name() {
     // Create app using new_for_init (allows empty config)
     let mut app = App::new_for_init().unwrap();
     
-    // Test init with explicit name
-    let result = app.init_vault(PathBuf::from("/tmp/test-vault"), Some("my-vault".to_string()));
+    // Test init with explicit name using temporary directory
+    let vault_temp_dir = TempDir::new().unwrap();
+    let result = app.init_vault(vault_temp_dir.path().to_path_buf(), Some("test-vault".to_string()));
     assert!(result.is_ok());
+    
+    // Keep temp directories alive to prevent cleanup during test
+    let _temp_dir = temp_dir;
+    let _vault_temp_dir = vault_temp_dir;
+    
+    // Clean up environment variable to prevent interference
+    env::remove_var("JOURNEY_CONFIG");
 }
 
 #[test]
@@ -219,9 +227,14 @@ fn test_init_vault_without_name() {
     // Create app using new_for_init (allows empty config)
     let mut app = App::new_for_init().unwrap();
     
-    // Test init without name - should use path basename
-    let result = app.init_vault(PathBuf::from("/tmp/my-journal"), None);
+    // Test init without name - should use path basename using temporary directory
+    let vault_temp_dir = TempDir::new().unwrap();
+    let result = app.init_vault(vault_temp_dir.path().to_path_buf(), None);
     assert!(result.is_ok());
+    
+    // Keep temp directories alive to prevent cleanup during test
+    let _temp_dir = temp_dir;
+    let _vault_temp_dir = vault_temp_dir;
 }
 
 #[test]
