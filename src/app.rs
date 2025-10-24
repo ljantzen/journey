@@ -8,12 +8,12 @@ use std::env;
 use std::process::Command;
 
 #[derive(Clone)]
-struct CliArgs {
-    vault: Option<String>,
-    date: Option<String>,
-    relative_date: Option<i64>,
-    time: Option<String>,
-    time_format: Option<String>,
+pub struct CliArgs {
+    pub vault: Option<String>,
+    pub date: Option<String>,
+    pub relative_date: Option<i64>,
+    pub time: Option<String>,
+    pub time_format: Option<String>,
 }
 
 pub struct App {
@@ -137,6 +137,7 @@ impl App {
             phrases: std::collections::HashMap::new(),
             section_name: None,
             date_format: None,
+            template_file: None,
         };
 
         // Add to config and save
@@ -154,11 +155,10 @@ impl App {
         
         let timestamp = if let Some(time) = time {
             vault.date_handler.combine_date_time(date, time)
-        } else if cli.date.is_some() || cli.relative_date.is_some() {
-            // If a specific date is provided, use the start of that day
-            vault.date_handler.combine_date_time(date, chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap())
         } else {
-            vault.date_handler.get_current_datetime()
+            // Use current time with the specified date (or current date if not specified)
+            let current_time = vault.date_handler.get_current_datetime().time();
+            vault.date_handler.combine_date_time(date, current_time)
         };
 
         vault.add_note(content, Some(timestamp))?;
@@ -205,26 +205,6 @@ impl App {
         Ok(())
     }
 
-    fn show_help(&self) -> Result<(), JourneyError> {
-        println!("Journey - A CLI-based journal application");
-        println!();
-        println!("Usage:");
-        println!("  journey                             List today's notes (default)");
-        println!("  journey <note content>              Add a note");
-        println!("  journey add <note content>          Add a note");
-        println!("  journey list                        List today's notes");
-        println!("  journey edit                        Edit today's notes");
-        println!("  journey init --path <path> --name <name>  Initialize a vault");
-        println!();
-        println!("Options:");
-        println!("  -d, --date <date>                  Specify date (YYYY-MM-DD)");
-        println!("  -r, --relative-date <days>         Days ago (0=today)");
-        println!("  -t, --time <time>                  Specify time (HH:MM)");
-        println!("  -v, --vault <name>                 Specify vault name");
-        println!("  -l, --list                         List notes");
-        println!("  -e, --edit                         Edit notes");
-        Ok(())
-    }
 
     pub fn get_vault(&self, vault_name: Option<&str>) -> Result<Vault, JourneyError> {
         let vault_config = if let Some(name) = vault_name {
@@ -252,7 +232,7 @@ impl App {
         Ok(Vault::new(vault_config.clone()))
     }
 
-    fn parse_date(&self, cli: &CliArgs) -> Result<NaiveDate, JourneyError> {
+    pub fn parse_date(&self, cli: &CliArgs) -> Result<NaiveDate, JourneyError> {
         if let Some(date_str) = &cli.date {
             let vault = self.get_vault(cli.vault.as_deref())?;
             vault.date_handler.parse_date_with_format_override(date_str, vault.config.date_format.as_deref())

@@ -11,23 +11,25 @@ vaults:
     section_name: null
     date_format: null  # Optional: YYYY-MM-DD, MM/DD/YYYY, DD.MM.YYYY, etc.
 
-  # Example vault with date format override
+  # Example vault with date format override, section, and template
   work:
     name: work
     path: ~/Documents/work-journal
     locale: en_US.UTF-8
     phrases: {}
-    section_name: "Daily Standup"
-    date_format: YYYY-MM-DD  # Force ISO format
+    section_name: "Daily Standup"  # Notes will be added to this section
+    date_format: YYYY-MM-DD  # Force ISO format (also supports MM/DD/YYYY, DD.MM.YYYY, etc.)
+    template_file: ~/Documents/templates/work-daily.md  # Template for new files
 
-  # Example vault with European date format
+  # Example vault with European date format, section, and template
   european:
     name: european
     path: ~/Documents/european-journal
     locale: no_NO.UTF-8
     phrases: {}
-    section_name: null
+    section_name: "Daglige Notater"  # Norwegian section name
     date_format: DD.MM.YYYY  # European date format
+    template_file: ~/Documents/templates/european-daily.md  # Template for new files
 
 # Configuration Notes:
 # 
@@ -35,8 +37,11 @@ vaults:
 # - path: Directory where notes are stored (supports ~ for home directory)
 # - locale: System locale for date/time parsing (e.g., en_US.UTF-8, no_NO.UTF-8)
 # - phrases: Custom phrases for quick note insertion (currently unused)
-# - section_name: Optional markdown section name for organizing notes
+# - section_name: Optional markdown section name for organizing notes (null = append to end)
 # - date_format: Optional date format override (null = use locale-based parsing)
+#   Supported formats: YYYY-MM-DD, MM/DD/YYYY, DD.MM.YYYY, DD/MM/YYYY, MM-DD-YYYY, DD-MM-YYYY
+#   Or any chrono format string like "%Y-%m-%d", "%m/%d/%Y", etc.
+# - template_file: Optional template file for new markdown files (null = use default template)
 #
 # Supported date formats:
 # - YYYY-MM-DD (ISO format)

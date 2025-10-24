@@ -286,16 +286,29 @@ fn test_parse_time_invalid_format() {
 #[test]
 fn test_parse_relative_date() {
     let handler = DateTimeHandler::new("en-US".to_string());
-    
-    // Test 0 days ago (today)
-    let date = handler.parse_relative_date(0);
     let today = Local::now().date_naive();
+    
+    // Test 0 days (today)
+    let date = handler.parse_relative_date(0);
     assert_eq!(date, today);
     
-    // Test 1 day ago (yesterday)
+    // Test positive values (past dates) - intuitive numbering
     let date = handler.parse_relative_date(1);
     let yesterday = today - chrono::Duration::days(1);
     assert_eq!(date, yesterday);
+    
+    let date = handler.parse_relative_date(7);
+    let week_ago = today - chrono::Duration::days(7);
+    assert_eq!(date, week_ago);
+    
+    // Test negative values (future dates) - intuitive numbering
+    let date = handler.parse_relative_date(-1);
+    let tomorrow = today + chrono::Duration::days(1);
+    assert_eq!(date, tomorrow);
+    
+    let date = handler.parse_relative_date(-7);
+    let week_from_now = today + chrono::Duration::days(7);
+    assert_eq!(date, week_from_now);
 }
 
 #[test]

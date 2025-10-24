@@ -159,9 +159,9 @@ impl DateTimeHandler {
         )))
     }
 
-    pub fn parse_relative_date(&self, days_ago: i64) -> NaiveDate {
+    pub fn parse_relative_date(&self, days_offset: i64) -> NaiveDate {
         let now = Local::now().date_naive();
-        now - chrono::Duration::days(days_ago)
+        now - chrono::Duration::days(days_offset)
     }
 
     pub fn format_date(&self, date: NaiveDate) -> String {
@@ -170,6 +170,10 @@ impl DateTimeHandler {
 
     pub fn format_datetime(&self, datetime: DateTime<Local>) -> String {
         datetime.format("%H:%M:%S").to_string()
+    }
+
+    pub fn format_time(&self, time: chrono::NaiveTime) -> String {
+        time.format("%H:%M:%S").to_string()
     }
 
     pub fn get_current_datetime(&self) -> DateTime<Local> {

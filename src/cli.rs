@@ -1,10 +1,14 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
+fn parse_relative_date(s: &str) -> Result<i64, String> {
+    s.parse::<i64>().map_err(|_| format!("Invalid relative date: {}", s))
+}
+
 #[derive(Parser)]
 #[command(name = "journey")]
 #[command(about = "A CLI-based journal application")]
-#[command(version)]
+#[command(disable_version_flag = true)]
 #[command(args_conflicts_with_subcommands = true)]
 pub struct Cli {
     #[command(subcommand)]
@@ -26,8 +30,8 @@ pub struct Cli {
     #[arg(short, long)]
     pub date: Option<String>,
 
-    /// Relative date selector (days ago, 0 = today)
-    #[arg(short, long)]
+    /// Relative date selector (days offset, 0 = today, positive = past, negative = future)
+    #[arg(short, long, value_parser = parse_relative_date)]
     pub relative_date: Option<i64>,
 
     /// Time selector (HH:MM or HH:MM:SS format)
@@ -43,8 +47,12 @@ pub struct Cli {
     pub stdin: bool,
 
     /// Vault name to use (optional if only one vault exists)
-    #[arg(short, long)]
+    #[arg(short = 'V', long)]
     pub vault: Option<String>,
+
+    /// Show version information
+    #[arg(short = 'v', long = "version")]
+    pub version: bool,
 
     /// Note content (for default behavior)
     #[arg(trailing_var_arg = true)]

@@ -5,6 +5,12 @@ use clap::Parser;
 fn main() {
     let cli = Cli::parse();
     
+    // Handle version flag
+    if cli.version {
+        println!("journey {}", env!("CARGO_PKG_VERSION"));
+        return;
+    }
+    
     // Check if this is an init command - if so, use special initialization
     let app_result = if matches!(cli.command, Some(journey::cli::Commands::Init { .. })) {
         App::new_for_init()

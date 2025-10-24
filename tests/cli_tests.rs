@@ -33,6 +33,18 @@ fn test_cli_parse_with_vault() {
 }
 
 #[test]
+fn test_cli_parse_version_short() {
+    let cli = Cli::try_parse_from(&["journey", "-v"]).unwrap();
+    assert!(cli.version);
+}
+
+#[test]
+fn test_cli_parse_version_long() {
+    let cli = Cli::try_parse_from(&["journey", "--version"]).unwrap();
+    assert!(cli.version);
+}
+
+#[test]
 fn test_cli_parse_with_date() {
     let cli = Cli::try_parse_from(&["journey", "--date", "2025-10-24", "note"]).unwrap();
     assert_eq!(cli.date, Some("2025-10-24".to_string()));

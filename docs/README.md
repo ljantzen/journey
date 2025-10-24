@@ -18,6 +18,8 @@ This directory contains detailed documentation for the Journey CLI application.
 ### Behavior & Features
 - **[DEFAULT_BEHAVIOR_UPDATE.md](DEFAULT_BEHAVIOR_UPDATE.md)** - Default behavior changes
 - **[ENVIRONMENT_VARIABLE_MERGE.md](ENVIRONMENT_VARIABLE_MERGE.md)** - Environment variable consolidation
+- **[SECTION_BASED_NOTES.md](SECTION_BASED_NOTES.md)** - Section-based note organization
+- **[TEMPLATE_FILES.md](TEMPLATE_FILES.md)** - Custom template files for new markdown files
 
 ### Testing & Development
 - **[TEST_SUMMARY.md](TEST_SUMMARY.md)** - Test coverage and results
@@ -35,6 +37,8 @@ This directory contains detailed documentation for the Journey CLI application.
 - **Stdin Support**: Read input from stdin with `--stdin`
 - **Locale Support**: Automatic locale detection for date/time parsing
 - **Single Vault Auto-Selection**: Automatic vault selection when only one exists
+- **Section-Based Notes**: Organize notes into specific markdown sections
+- **Template Files**: Custom templates for new markdown files with variable substitution
 
 ### Configuration Examples
 ```yaml
@@ -47,6 +51,7 @@ vaults:
     phrases: {}
     section_name: null
     date_format: YYYY-MM-DD  # Optional date format override
+    template_file: /path/to/template.md  # Optional template file
 ```
 
 ### Usage Examples

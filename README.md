@@ -58,9 +58,25 @@ journey add My note content
 
 # Add note for specific date (no quotes needed)
 journey --date 2025-10-22 Note for specific date
+journey --date 2025-12-25 Christmas planning note
+
+# Different date formats work automatically based on locale
+journey --date 10/24/2025 US format date
+journey --date 24.10.2025 European format date
+journey --date October 24, 2025 Long format date
+
+# Relative dates
+journey --relative-date -7 Note for next week
+journey --relative-date 1 Note for yesterday
 
 # Add note for yesterday (no quotes needed)
 journey --relative-date 1 Note for yesterday
+
+# Add note for tomorrow (no quotes needed)
+journey --relative-date -1 Note for tomorrow
+
+# Add note for next week (no quotes needed)
+journey --relative-date -7 Note for next week
 
 # Add note with specific time (no quotes needed)
 journey --time 14:30 Note with specific time
@@ -98,6 +114,107 @@ journey --edit
 # Edit notes for specific date
 journey --date 2025-10-22 --edit
 ```
+
+### Section-Based Notes
+
+Journey supports organizing notes into specific sections within your daily markdown files. This is useful for categorizing different types of notes (e.g., work vs personal, different projects, etc.).
+
+#### Configuration
+Set the `section_name` in your vault configuration:
+
+```yaml
+vaults:
+  work:
+    name: work
+    path: ~/Documents/work-journal
+    locale: en_US.UTF-8
+    section_name: "Daily Standup"  # Notes will be added to this section
+    phrases: {}
+    date_format: null
+```
+
+#### How It Works
+- When `section_name` is configured, new notes are automatically added to that section
+- If the section doesn't exist, it will be created at the end of the file
+- If the section exists, notes are added at the end of that section
+- Other sections and content in the file are preserved
+
+#### Example Markdown Structure
+```markdown
+---
+date: 2025-10-24
+---
+
+# Other Section
+
+- [09:00] Some other note
+
+# Daily Standup
+
+- [10:00] Morning standup notes
+- [10:15] New note added here automatically
+
+# Another Section
+
+- [11:00] More notes
+```
+
+### Template Files
+
+Journey supports custom template files for new markdown files. This allows you to define a consistent structure for your daily notes.
+
+#### Configuration
+Set the `template_file` in your vault configuration:
+
+```yaml
+vaults:
+  work:
+    name: work
+    path: ~/Documents/work-journal
+    template_file: ~/Documents/templates/work-daily.md  # Template for new files
+    section_name: "Daily Standup"
+    locale: en_US.UTF-8
+    phrases: {}
+    date_format: null
+```
+
+#### Template Variables
+Templates support the following variables that are automatically replaced:
+
+- `{{date}}` - Date of the note being added (formatted according to vault settings)
+- `{{time}}` - Time of the note being added (HH:MM:SS format)
+- `{{datetime}}` - Date and time of the note being added
+- `{{section_name}}` - The configured section name (if any)
+- `{{note}}` - The note content (optional placeholder)
+
+**Important**: Template variables reflect the date/time of the note being added, not the current date/time. This means when adding notes to different dates, the template variables will show the note's date/time, not when the template was processed.
+
+#### Example Template
+```markdown
+---
+date: {{date}}
+time: {{time}}
+---
+
+# {{section_name}}
+
+## Morning
+{{note}}
+
+## Afternoon
+- [ ] Task 1
+- [ ] Task 2
+
+## Evening
+- Reflection: 
+```
+
+#### Template Behavior
+- If `template_file` is specified, it will be used for new files
+- If `template_file` is not specified, the default template is used
+- Template variables are replaced with actual values
+- If `{{note}}` placeholder is not found, the note is appended to the end
+- If `{{note}}` placeholder is found, it's replaced with the note content
 
 ## Configuration
 
@@ -141,15 +258,57 @@ date: 2025-10-24
 
 ## Options
 
-- `-d, --date <DATE>`: Specify date in YYYY-MM-DD format
-- `-r, --relative-date <DAYS>`: Days ago (0 = today, 1 = yesterday)
+- `-d, --date <DATE>`: Specify date (supports multiple formats, see below)
+- `-r, --relative-date <DAYS>`: Days offset (positive = past, negative = future, 0 = today)
 - `-t, --time <TIME>`: Specify time in HH:MM or HH:MM:SS format
 - `--time-format <FORMAT>`: Override time format (12h|24h)
 - `--stdin`: Read input from stdin (each line becomes a separate note)
-- `-v, --vault <NAME>`: Specify vault name
+- `-V, --vault <NAME>`: Specify vault name
+- `-v, --version`: Show version information
 - `-l, --list`: List notes
 - `-e, --edit`: Edit notes
 - `-a, --add-note <NOTE>`: Add a note
+
+### Date Format Support
+
+The `--date` flag supports multiple date formats based on your locale:
+
+#### English/US Locale (`en_US.UTF-8`)
+- `2025-10-24` (ISO format)
+- `10/24/2025` (US format)
+- `10-24-2025` (US with dashes)
+- `October 24, 2025` (Long format)
+- `Oct 24, 2025` (Short format)
+
+#### Norwegian Locale (`no_NO.UTF-8`)
+- `2025-10-24` (ISO format)
+- `24.10.2025` (Norwegian format)
+- `24/10/2025` (European format)
+- `24-10-2025` (European with dashes)
+- `24. oktober 2025` (Norwegian long)
+- `24. okt 2025` (Norwegian short)
+
+#### Custom Date Format Override
+You can also specify a custom date format in your `journey.yaml`:
+
+```yaml
+vaults:
+  my_vault:
+    date_format: "DD.MM.YYYY"  # European format
+    # or
+    date_format: "MM/DD/YYYY"  # US format
+    # or any chrono format string
+```
+
+### Relative Date Examples
+
+The `--relative-date` flag uses intuitive numbering:
+
+- `journey --relative-date 1` → Yesterday (1 day ago)
+- `journey --relative-date 7` → Last week (7 days ago)
+- `journey --relative-date 0` → Today
+- `journey --relative-date -1` → Tomorrow (1 day in the future)
+- `journey --relative-date -7` → Next week (7 days in the future)
 
 ## Examples
 
