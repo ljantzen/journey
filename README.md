@@ -11,19 +11,39 @@ Journey is a command-line journal application written in Rust that allows you to
 - **Cross-platform**: Works on Linux, macOS, and Windows
 - **Configuration**: YAML-based configuration stored in platform-appropriate locations
 
+# License 
+
+This software is licensed under a combined MIT and SPPL license.  It is basically a MIT license, but in order to be compliant you need to send me a postcard.  Details in [LICENSE](https://github.com/ljantzen/journey/blob/main/LICENSE)
+
 ## Installation
 
+You can install journey using cargo:
+
 ```bash
-git clone <repository-url>
+cargo install journey-cli
+```
+
+Or build from source:
+
+```bash
+git clone https://github.com/ljantzen/journey.git
 cd journey
 cargo build --release
+cargo install --path .
 ```
+
+Or download binaries directly from the [github releases page](https://github.com/ljantzen/journey/releases).
+
 
 ## Quick Start
 
 1. **Initialize a vault**:
    ```bash
+   # Unix/Linux/macOS
    journey init --path ~/my-journal --name personal
+   
+   # Windows
+   journey init --path "%USERPROFILE%\my-journal" --name personal
    ```
 
 2. **Add a note**:
@@ -34,16 +54,34 @@ cargo build --release
 3. **List today's notes**:
    ```bash
    journey --list
+   # Or simply:
+   journey
    ```
 
 4. **Add a note for yesterday**:
    ```bash
    journey --relative-date 1 Note for yesterday
    ```
+   The timestamp will be the current time, just 24 hours before.
 
 ## Commands
 
+### Default Behavior
+
+When you run `journey` without any arguments, it lists today's notes (equivalent to `journey --list`):
+
+```bash
+# List today's notes (default behavior)
+journey
+
+# Explicitly list notes (same as above)
+journey --list
+```
+
+This provides a quick way to see your notes without needing to remember flags.
+
 ### Initialize a Vault
+
 ```bash
 journey init --path /path/to/vault --name vault-name
 ```
@@ -178,6 +216,24 @@ vaults:
     date_format: null
 ```
 
+**Template File Path Expansion:**
+Template file paths support the same expansion as vault paths:
+
+- **Unix/Linux/macOS**: `~/templates/journal.md` → `/home/username/templates/journal.md`
+- **Windows**: `"%USERPROFILE%/templates/journal.md"` → `C:\Users\username\templates\journal.md`
+
+**Examples:**
+```yaml
+# Unix/Linux/macOS
+template_file: "~/Documents/templates/work-daily.md"
+
+# Windows
+template_file: "%USERPROFILE%/Documents/templates/work-daily.md"
+
+# Windows with multiple variables
+template_file: "%USERPROFILE%/Documents/%USERNAME%_templates/journal.md"
+```
+
 #### Template Variables
 Templates support the following variables that are automatically replaced:
 
@@ -234,6 +290,63 @@ vaults:
     phrases: {}
     section_name: null
 ```
+
+### Path Expansion
+
+Journey supports automatic path expansion for vault directories, making configuration more portable and user-friendly.
+
+#### Tilde Expansion (Unix/Linux/macOS)
+Use `~` to reference your home directory:
+
+```yaml
+vaults:
+  personal:
+    name: personal
+    path: ~/Documents/journal  # Expands to /home/username/Documents/journal
+    locale: en_US.UTF-8
+    phrases: {}
+    section_name: null
+```
+
+#### Windows Environment Variables
+On Windows, you can use environment variables in paths:
+
+```yaml
+vaults:
+  personal:
+    name: personal
+    path: "%USERPROFILE%/Documents/journal"  # Expands to C:\Users\username\Documents\journal
+    locale: en_US.UTF-8
+    phrases: {}
+    section_name: null
+```
+
+**Supported Windows Environment Variables:**
+- `%USERPROFILE%` - User's home directory (e.g., `C:\Users\username`)
+- `%APPDATA%` - Application data directory (e.g., `C:\Users\username\AppData\Roaming`)
+- `%USERNAME%` - Current username
+- Any other Windows environment variable
+
+**Examples:**
+```yaml
+vaults:
+  work:
+    name: work
+    path: "%USERPROFILE%/Documents/work-journal"
+    
+  appdata:
+    name: appdata
+    path: "%APPDATA%/journey"
+    
+  custom:
+    name: custom
+    path: "%USERPROFILE%/Documents/%USERNAME%_journal"
+```
+
+#### Cross-Platform Compatibility
+- **Unix/Linux/macOS**: Tilde expansion (`~/path`) works automatically
+- **Windows**: Environment variable expansion (`%VAR%`) works automatically
+- **Fallback**: If expansion fails, the original path is used as-is
 
 ### Phrase Expansion
 
@@ -393,8 +506,11 @@ The `--relative-date` flag uses intuitive numbering:
 ## Examples
 
 ```bash
-# Create a vault
+# Create a vault (Unix/Linux/macOS)
 journey init --path ~/journal --name daily
+
+# Create a vault (Windows)
+journey init --path "%USERPROFILE%\journal" --name daily
 
 # Add notes throughout the day (no quotes needed)
 journey Morning coffee and planning

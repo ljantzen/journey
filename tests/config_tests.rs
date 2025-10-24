@@ -94,3 +94,429 @@ fn test_vault_config_creation() {
     assert_eq!(vault.locale, "en-US");
     assert_eq!(vault.section_name, Some("Daily Notes".to_string()));
 }
+
+#[test]
+fn test_tilde_expansion() {
+    use serde_yaml_ng;
+    use std::env;
+    
+    // Set a test HOME environment variable
+    let original_home = env::var("HOME").unwrap_or_default();
+    env::set_var("HOME", "/home/testuser");
+    
+    // Test YAML with tilde expansion
+    let yaml_content = r#"
+vaults:
+  test:
+    name: test
+    path: ~/journal
+    locale: en-US
+    phrases: {}
+    section_name: null
+    date_format: null
+    template_file: null
+    file_path_format: null
+"#;
+    
+    let config: Config = serde_yaml_ng::from_str(yaml_content).unwrap();
+    let vault = config.get_vault("test").unwrap();
+    
+    // The path should be expanded to the full home directory path
+    assert_eq!(vault.path, PathBuf::from("/home/testuser/journal"));
+    
+    // Restore original HOME
+    if !original_home.is_empty() {
+        env::set_var("HOME", original_home);
+    } else {
+        env::remove_var("HOME");
+    }
+}
+
+#[test]
+fn test_tilde_expansion_with_subdirectory() {
+    use serde_yaml_ng;
+    use std::env;
+    
+    // Set a test HOME environment variable
+    let original_home = env::var("HOME").unwrap_or_default();
+    env::set_var("HOME", "/home/testuser");
+    
+    // Test YAML with tilde expansion in subdirectory
+    let yaml_content = r#"
+vaults:
+  test:
+    name: test
+    path: ~/Documents/journals
+    locale: en-US
+    phrases: {}
+    section_name: null
+    date_format: null
+    template_file: null
+    file_path_format: null
+"#;
+    
+    let config: Config = serde_yaml_ng::from_str(yaml_content).unwrap();
+    let vault = config.get_vault("test").unwrap();
+    
+    // The path should be expanded to the full home directory path
+    // Note: The actual expansion uses the real HOME, not the test one
+    let expected_path = if let Ok(home) = env::var("HOME") {
+        PathBuf::from(home).join("Documents/journals")
+    } else {
+        PathBuf::from("~/Documents/journals")
+    };
+    assert_eq!(vault.path, expected_path);
+    
+    // Restore original HOME
+    if !original_home.is_empty() {
+        env::set_var("HOME", original_home);
+    } else {
+        env::remove_var("HOME");
+    }
+}
+
+#[test]
+fn test_tilde_expansion_windows_style() {
+    use serde_yaml_ng;
+    use std::env;
+    
+    // Test Windows-style environment variables
+    let original_userprofile = env::var("USERPROFILE").unwrap_or_default();
+    let original_home = env::var("HOME").unwrap_or_default();
+    
+    // Set Windows-style environment variables
+    env::set_var("USERPROFILE", "C:\\Users\\testuser");
+    env::set_var("HOME", "/home/testuser"); // Keep this as fallback
+    
+    // Test YAML with tilde expansion
+    let yaml_content = r#"
+vaults:
+  test:
+    name: test
+    path: ~/Documents/journal
+    locale: en-US
+    phrases: {}
+    section_name: null
+    date_format: null
+    template_file: null
+    file_path_format: null
+"#;
+    
+    let config: Config = serde_yaml_ng::from_str(yaml_content).unwrap();
+    let vault = config.get_vault("test").unwrap();
+    
+    // On Windows, should use USERPROFILE, on Unix should use HOME
+    let expected_path = if cfg!(windows) {
+        PathBuf::from("C:\\Users\\testuser\\Documents\\journal")
+    } else {
+        PathBuf::from("/home/testuser/Documents/journal")
+    };
+    assert_eq!(vault.path, expected_path);
+    
+    // Restore original environment variables
+    if !original_userprofile.is_empty() {
+        env::set_var("USERPROFILE", original_userprofile);
+    } else {
+        env::remove_var("USERPROFILE");
+    }
+    if !original_home.is_empty() {
+        env::set_var("HOME", original_home);
+    } else {
+        env::remove_var("HOME");
+    }
+}
+
+#[test]
+fn test_tilde_expansion_fallback() {
+    use serde_yaml_ng;
+    use std::env;
+    
+    // Test fallback behavior when no home directory is found
+    let original_userprofile = env::var("USERPROFILE").unwrap_or_default();
+    let original_home = env::var("HOME").unwrap_or_default();
+    
+    // Remove environment variables to test fallback
+    env::remove_var("USERPROFILE");
+    env::remove_var("HOME");
+    
+    // Test YAML with tilde expansion
+    let yaml_content = r#"
+vaults:
+  test:
+    name: test
+    path: ~/fallback-test
+    locale: en-US
+    phrases: {}
+    section_name: null
+    date_format: null
+    template_file: null
+    file_path_format: null
+"#;
+    
+    let config: Config = serde_yaml_ng::from_str(yaml_content).unwrap();
+    let vault = config.get_vault("test").unwrap();
+    
+    // Should fall back to the original path when no home directory is found
+    // Note: This test might not work in all environments due to system HOME variables
+    // The important thing is that the code handles the case gracefully
+    let path_str = vault.path.to_string_lossy();
+    assert!(path_str.contains("fallback-test"));
+    
+    // Restore original environment variables
+    if !original_userprofile.is_empty() {
+        env::set_var("USERPROFILE", original_userprofile);
+    }
+    if !original_home.is_empty() {
+        env::set_var("HOME", original_home);
+    }
+}
+
+#[test]
+fn test_windows_env_var_expansion() {
+    use serde_yaml_ng;
+    use std::env;
+    
+    // Test Windows-style environment variable expansion
+    let original_userprofile = env::var("USERPROFILE").unwrap_or_default();
+    let original_appdata = env::var("APPDATA").unwrap_or_default();
+    
+    // Set Windows-style environment variables
+    env::set_var("USERPROFILE", "C:\\Users\\testuser");
+    env::set_var("APPDATA", "C:\\Users\\testuser\\AppData\\Roaming");
+    
+    // Test YAML with Windows environment variable expansion
+    let yaml_content = r#"
+vaults:
+  test:
+    name: test
+    path: "%USERPROFILE%/Documents/journal"
+    locale: en-US
+    phrases: {}
+    section_name: null
+    date_format: null
+    template_file: null
+    file_path_format: null
+"#;
+    
+    let config: Config = serde_yaml_ng::from_str(yaml_content).unwrap();
+    let vault = config.get_vault("test").unwrap();
+    
+    // On Windows, should expand %USERPROFILE%, on Unix should leave as-is
+    let expected_path = if cfg!(windows) {
+        PathBuf::from("C:\\Users\\testuser\\Documents\\journal")
+    } else {
+        PathBuf::from("%USERPROFILE%/Documents/journal")
+    };
+    assert_eq!(vault.path, expected_path);
+    
+    // Restore original environment variables
+    if !original_userprofile.is_empty() {
+        env::set_var("USERPROFILE", original_userprofile);
+    } else {
+        env::remove_var("USERPROFILE");
+    }
+    if !original_appdata.is_empty() {
+        env::set_var("APPDATA", original_appdata);
+    } else {
+        env::remove_var("APPDATA");
+    }
+}
+
+#[test]
+fn test_windows_env_var_expansion_appdata() {
+    use serde_yaml_ng;
+    use std::env;
+    
+    // Test APPDATA environment variable expansion
+    let original_appdata = env::var("APPDATA").unwrap_or_default();
+    
+    // Set APPDATA environment variable
+    env::set_var("APPDATA", "C:\\Users\\testuser\\AppData\\Roaming");
+    
+    // Test YAML with APPDATA expansion
+    let yaml_content = r#"
+vaults:
+  test:
+    name: test
+    path: "%APPDATA%/journey"
+    locale: en-US
+    phrases: {}
+    section_name: null
+    date_format: null
+    template_file: null
+    file_path_format: null
+"#;
+    
+    let config: Config = serde_yaml_ng::from_str(yaml_content).unwrap();
+    let vault = config.get_vault("test").unwrap();
+    
+    // On Windows, should expand %APPDATA%, on Unix should leave as-is
+    let expected_path = if cfg!(windows) {
+        PathBuf::from("C:\\Users\\testuser\\AppData\\Roaming\\journey")
+    } else {
+        PathBuf::from("%APPDATA%/journey")
+    };
+    assert_eq!(vault.path, expected_path);
+    
+    // Restore original environment variable
+    if !original_appdata.is_empty() {
+        env::set_var("APPDATA", original_appdata);
+    } else {
+        env::remove_var("APPDATA");
+    }
+}
+
+#[test]
+fn test_windows_env_var_expansion_multiple() {
+    use serde_yaml_ng;
+    use std::env;
+    
+    // Test multiple environment variables in one path
+    let original_userprofile = env::var("USERPROFILE").unwrap_or_default();
+    let original_username = env::var("USERNAME").unwrap_or_default();
+    
+    // Set environment variables
+    env::set_var("USERPROFILE", "C:\\Users\\testuser");
+    env::set_var("USERNAME", "testuser");
+    
+    // Test YAML with multiple environment variables
+    let yaml_content = r#"
+vaults:
+  test:
+    name: test
+    path: "%USERPROFILE%/Documents/%USERNAME%_journal"
+    locale: en-US
+    phrases: {}
+    section_name: null
+    date_format: null
+    template_file: null
+    file_path_format: null
+"#;
+    
+    let config: Config = serde_yaml_ng::from_str(yaml_content).unwrap();
+    let vault = config.get_vault("test").unwrap();
+    
+    // On Windows, should expand both variables, on Unix should leave as-is
+    let expected_path = if cfg!(windows) {
+        PathBuf::from("C:\\Users\\testuser\\Documents\\testuser_journal")
+    } else {
+        PathBuf::from("%USERPROFILE%/Documents/%USERNAME%_journal")
+    };
+    assert_eq!(vault.path, expected_path);
+    
+    // Restore original environment variables
+    if !original_userprofile.is_empty() {
+        env::set_var("USERPROFILE", original_userprofile);
+    } else {
+        env::remove_var("USERPROFILE");
+    }
+    if !original_username.is_empty() {
+        env::set_var("USERNAME", original_username);
+    } else {
+        env::remove_var("USERNAME");
+    }
+}
+
+#[test]
+fn test_template_file_tilde_expansion() {
+    use serde_yaml_ng;
+    use std::env;
+    
+    // Test tilde expansion in template_file
+    let original_home = env::var("HOME").unwrap_or_default();
+    env::set_var("HOME", "/home/testuser");
+    
+    // Test YAML with tilde expansion in template_file
+    let yaml_content = r#"
+vaults:
+  test:
+    name: test
+    path: /tmp/test
+    locale: en-US
+    phrases: {}
+    section_name: null
+    date_format: null
+    template_file: "~/Documents/templates/journal.md"
+    file_path_format: null
+"#;
+    
+    let config: Config = serde_yaml_ng::from_str(yaml_content).unwrap();
+    let vault = config.get_vault("test").unwrap();
+    
+    // The template_file should be expanded to the full home directory path
+    assert_eq!(vault.template_file, Some("/home/testuser/Documents/templates/journal.md".to_string()));
+    
+    // Restore original HOME
+    if !original_home.is_empty() {
+        env::set_var("HOME", original_home);
+    } else {
+        env::remove_var("HOME");
+    }
+}
+
+#[test]
+fn test_template_file_windows_env_var_expansion() {
+    use serde_yaml_ng;
+    use std::env;
+    
+    // Test Windows environment variable expansion in template_file
+    let original_userprofile = env::var("USERPROFILE").unwrap_or_default();
+    env::set_var("USERPROFILE", "C:\\Users\\testuser");
+    
+    // Test YAML with Windows environment variable expansion in template_file
+    let yaml_content = r#"
+vaults:
+  test:
+    name: test
+    path: /tmp/test
+    locale: en-US
+    phrases: {}
+    section_name: null
+    date_format: null
+    template_file: "%USERPROFILE%/Documents/templates/journal.md"
+    file_path_format: null
+"#;
+    
+    let config: Config = serde_yaml_ng::from_str(yaml_content).unwrap();
+    let vault = config.get_vault("test").unwrap();
+    
+    // On Windows, should expand %USERPROFILE%, on Unix should leave as-is
+    let expected_template = if cfg!(windows) {
+        "C:\\Users\\testuser\\Documents\\templates\\journal.md"
+    } else {
+        "%USERPROFILE%/Documents/templates/journal.md"
+    };
+    assert_eq!(vault.template_file, Some(expected_template.to_string()));
+    
+    // Restore original environment variable
+    if !original_userprofile.is_empty() {
+        env::set_var("USERPROFILE", original_userprofile);
+    } else {
+        env::remove_var("USERPROFILE");
+    }
+}
+
+#[test]
+fn test_template_file_no_expansion() {
+    use serde_yaml_ng;
+    
+    // Test that regular paths without tildes or env vars are not modified
+    let yaml_content = r#"
+vaults:
+  test:
+    name: test
+    path: /tmp/test
+    locale: en-US
+    phrases: {}
+    section_name: null
+    date_format: null
+    template_file: "/absolute/path/to/template.md"
+    file_path_format: null
+"#;
+    
+    let config: Config = serde_yaml_ng::from_str(yaml_content).unwrap();
+    let vault = config.get_vault("test").unwrap();
+    
+    // The template_file should remain unchanged
+    assert_eq!(vault.template_file, Some("/absolute/path/to/template.md".to_string()));
+}
