@@ -11,7 +11,34 @@ impl DateTimeHandler {
     }
 
     pub fn parse_date(&self, date_str: &str) -> Result<NaiveDate, JourneyError> {
-        // Try different date formats based on locale
+        self.parse_date_with_format_override(date_str, None)
+    }
+
+    pub fn parse_date_with_format_override(&self, date_str: &str, format_override: Option<&str>) -> Result<NaiveDate, JourneyError> {
+        // If format override is specified, use only that format
+        if let Some(override_format) = format_override {
+            // Convert common format names to chrono format strings
+            let format_str = match override_format {
+                "YYYY-MM-DD" => "%Y-%m-%d",
+                "MM/DD/YYYY" => "%m/%d/%Y",
+                "DD.MM.YYYY" => "%d.%m.%Y",
+                "DD/MM/YYYY" => "%d/%m/%Y",
+                "MM-DD-YYYY" => "%m-%d-%Y",
+                "DD-MM-YYYY" => "%d-%m-%Y",
+                _ => override_format, // Use as-is if it's already a chrono format
+            };
+
+            if let Ok(date) = NaiveDate::parse_from_str(date_str, format_str) {
+                return Ok(date);
+            }
+
+            return Err(JourneyError::InvalidDateFormat(format!(
+                "Could not parse date: {} with format override: {}",
+                date_str, override_format
+            )));
+        }
+
+        // Try different date formats based on locale (original behavior)
         let formats: Vec<&str> = if self.locale.starts_with("en") {
             // US/English formats (MM/DD/YYYY)
             vec![
@@ -53,7 +80,41 @@ impl DateTimeHandler {
     }
 
     pub fn parse_time(&self, time_str: &str) -> Result<NaiveTime, JourneyError> {
-        // Try different time formats based on locale
+        self.parse_time_with_format_override(time_str, None)
+    }
+
+    pub fn parse_time_with_format_override(&self, time_str: &str, format_override: Option<&str>) -> Result<NaiveTime, JourneyError> {
+        // If format override is specified, use only that format
+        if let Some(override_format) = format_override {
+            let formats = match override_format {
+                "12h" => vec![
+                    "%I:%M %p",     // 12-hour: 2:30 PM
+                    "%I:%M:%S %p",  // 12-hour with seconds: 2:30:45 PM
+                    "%I:%M%p",      // 12-hour compact: 2:30PM
+                    "%I:%M:%S%p",   // 12-hour compact with seconds: 2:30:45PM
+                ],
+                "24h" => vec![
+                    "%H:%M",        // 24-hour: 14:30
+                    "%H:%M:%S",     // 24-hour with seconds: 14:30:45
+                ],
+                _ => return Err(JourneyError::InvalidTimeFormat(format!(
+                    "Invalid time format override: {}. Use '12h' or '24h'", override_format
+                )))
+            };
+
+            for format in &formats {
+                if let Ok(time) = NaiveTime::parse_from_str(time_str, format) {
+                    return Ok(time);
+                }
+            }
+
+            return Err(JourneyError::InvalidTimeFormat(format!(
+                "Could not parse time: {} with format override: {}",
+                time_str, override_format
+            )));
+        }
+
+        // Try different time formats based on locale (original behavior)
         let formats: Vec<&str> = if self.locale.starts_with("en") {
             // US/English formats
             vec![

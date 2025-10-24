@@ -17,6 +17,7 @@ fn test_config_add_vault() {
         locale: "en-US".to_string(),
         phrases: HashMap::new(),
         section_name: None,
+        date_format: None,
     };
     
     config.add_vault(vault);
@@ -33,6 +34,7 @@ fn test_config_get_vault() {
         locale: "en-US".to_string(),
         phrases: HashMap::new(),
         section_name: None,
+        date_format: None,
     };
     
     config.add_vault(vault);
@@ -59,6 +61,7 @@ fn test_config_get_default_vault() {
         locale: "en-US".to_string(),
         phrases: HashMap::new(),
         section_name: None,
+        date_format: None,
     };
     
     config.add_vault(vault);
@@ -75,6 +78,7 @@ fn test_vault_config_creation() {
         locale: "en-US".to_string(),
         phrases: HashMap::new(),
         section_name: Some("Daily Notes".to_string()),
+        date_format: None,
     };
     
     assert_eq!(vault.name, "test");

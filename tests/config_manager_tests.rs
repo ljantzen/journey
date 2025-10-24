@@ -35,6 +35,7 @@ fn test_save_and_load_config() {
         locale: "en-US".to_string(),
         phrases: HashMap::new(),
         section_name: None,
+        date_format: None,
     };
     config.add_vault(vault);
     

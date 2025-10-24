@@ -34,6 +34,10 @@ pub struct Cli {
     #[arg(short, long)]
     pub time: Option<String>,
 
+    /// Time format override (12h|24h)
+    #[arg(long)]
+    pub time_format: Option<String>,
+
     /// Vault name to use (optional if only one vault exists)
     #[arg(short, long)]
     pub vault: Option<String>,

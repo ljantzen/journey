@@ -39,6 +39,7 @@ fn test_app_creation() {
         locale: "en-US".to_string(),
         phrases: HashMap::new(),
         section_name: None,
+        date_format: None,
     };
     config.add_vault(vault_config);
     
@@ -58,6 +59,7 @@ fn test_single_vault_auto_selection() {
         locale: "en-US".to_string(),
         phrases: HashMap::new(),
         section_name: None,
+        date_format: None,
     };
     config.add_vault(vault_config);
     
@@ -83,6 +85,7 @@ fn test_multiple_vaults_require_specification() {
         locale: "en-US".to_string(),
         phrases: HashMap::new(),
         section_name: None,
+        date_format: None,
     };
     
     let vault2 = VaultConfig {
@@ -91,6 +94,7 @@ fn test_multiple_vaults_require_specification() {
         locale: "en-US".to_string(),
         phrases: HashMap::new(),
         section_name: None,
+        date_format: None,
     };
     
     config.add_vault(vault1);
@@ -241,6 +245,7 @@ fn test_production_config_isolation() {
         locale: "en-US".to_string(),
         phrases: HashMap::new(),
         section_name: None,
+        date_format: None,
     };
     test_config.add_vault(vault_config);
     

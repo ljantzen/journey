@@ -1,7 +1,6 @@
 use crate::cli::Cli;
 use crate::config::Config;
 use crate::config_manager::ConfigManager;
-use crate::date_time::DateTimeHandler;
 use crate::errors::JourneyError;
 use crate::vault::Vault;
 use chrono::{Local, NaiveDate};
@@ -14,10 +13,7 @@ struct CliArgs {
     date: Option<String>,
     relative_date: Option<i64>,
     time: Option<String>,
-    add_note: Option<String>,
-    list: bool,
-    edit: bool,
-    note_content: Vec<String>,
+    time_format: Option<String>,
 }
 
 pub struct App {
@@ -62,32 +58,28 @@ impl App {
                 let date = cli.date.clone();
                 let relative_date = cli.relative_date;
                 let time = cli.time.clone();
-                let add_note = cli.add_note.clone();
-                let list = cli.list;
-                let edit = cli.edit;
-                let note_content = cli.note_content.clone();
-                
-                self.handle_command_with_args(cmd, vault, date, relative_date, time, add_note, list, edit, note_content)
+                let time_format = cli.time_format.clone();
+                self.handle_command_with_args(cmd, vault, date, relative_date, time, time_format)
             }
             None => self.handle_default_behavior(&cli),
         }
     }
 
-    fn handle_command_with_args(&mut self, cmd: crate::cli::Commands, vault: Option<String>, date: Option<String>, relative_date: Option<i64>, time: Option<String>, add_note: Option<String>, list: bool, edit: bool, note_content: Vec<String>) -> Result<(), JourneyError> {
+    fn handle_command_with_args(&mut self, cmd: crate::cli::Commands, vault: Option<String>, date: Option<String>, relative_date: Option<i64>, time: Option<String>, time_format: Option<String>) -> Result<(), JourneyError> {
         match cmd {
             crate::cli::Commands::Init { path, name, vault_type: _ } => {
                 self.init_vault(path, name)
             }
             crate::cli::Commands::Add { content } => {
-                let cli_args = CliArgs { vault, date, relative_date, time, add_note, list, edit, note_content };
+                let cli_args = CliArgs { vault, date, relative_date, time, time_format };
                 self.add_note(&content, &cli_args)
             }
             crate::cli::Commands::List => {
-                let cli_args = CliArgs { vault, date, relative_date, time, add_note, list, edit, note_content };
+                let cli_args = CliArgs { vault, date, relative_date, time, time_format };
                 self.list_notes(&cli_args)
             }
             crate::cli::Commands::Edit => {
-                let cli_args = CliArgs { vault, date, relative_date, time, add_note, list, edit, note_content };
+                let cli_args = CliArgs { vault, date, relative_date, time, time_format };
                 self.edit_notes(&cli_args)
             }
         }
@@ -99,10 +91,7 @@ impl App {
             date: cli.date.clone(),
             relative_date: cli.relative_date,
             time: cli.time.clone(),
-            add_note: cli.add_note.clone(),
-            list: cli.list,
-            edit: cli.edit,
-            note_content: cli.note_content.clone(),
+            time_format: cli.time_format.clone(),
         };
         
         if cli.list {
@@ -116,7 +105,8 @@ impl App {
             let content = cli.note_content.join(" ");
             self.add_note(&content, &cli_args)
         } else {
-            self.show_help()
+            // Default behavior: list today's notes (same as --list)
+            self.list_notes(&cli_args)
         }
     }
 
@@ -144,6 +134,7 @@ impl App {
             locale,
             phrases: std::collections::HashMap::new(),
             section_name: None,
+            date_format: None,
         };
 
         // Add to config and save
@@ -216,6 +207,7 @@ impl App {
         println!("Journey - A CLI-based journal application");
         println!();
         println!("Usage:");
+        println!("  journey                             List today's notes (default)");
         println!("  journey <note content>              Add a note");
         println!("  journey add <note content>          Add a note");
         println!("  journey list                        List today's notes");
@@ -260,11 +252,11 @@ impl App {
 
     fn parse_date(&self, cli: &CliArgs) -> Result<NaiveDate, JourneyError> {
         if let Some(date_str) = &cli.date {
-            let date_handler = DateTimeHandler::new("en-US".to_string());
-            date_handler.parse_date(date_str)
+            let vault = self.get_vault(cli.vault.as_deref())?;
+            vault.date_handler.parse_date_with_format_override(date_str, vault.config.date_format.as_deref())
         } else if let Some(days_ago) = cli.relative_date {
-            let date_handler = DateTimeHandler::new("en-US".to_string());
-            Ok(date_handler.parse_relative_date(days_ago))
+            let vault = self.get_vault(cli.vault.as_deref())?;
+            Ok(vault.date_handler.parse_relative_date(days_ago))
         } else {
             Ok(Local::now().date_naive())
         }
@@ -272,8 +264,8 @@ impl App {
 
     fn parse_time(&self, cli: &CliArgs) -> Result<Option<chrono::NaiveTime>, JourneyError> {
         if let Some(time_str) = &cli.time {
-            let date_handler = DateTimeHandler::new("en-US".to_string());
-            Ok(Some(date_handler.parse_time(time_str)?))
+            let vault = self.get_vault(cli.vault.as_deref())?;
+            Ok(Some(vault.date_handler.parse_time_with_format_override(time_str, cli.time_format.as_deref())?))
         } else {
             Ok(None)
         }

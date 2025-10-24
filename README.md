@@ -51,19 +51,25 @@ journey init --path /path/to/vault --name vault-name
 ### Add Notes
 ```bash
 # Add note for today (default behavior)
-journey "My note content"
+journey My note content
 
 # Add note with explicit command
-journey add "My note content"
+journey add My note content
 
-# Add note for specific date
-journey --date 2025-10-22 "Note for specific date"
+# Add note for specific date (no quotes needed)
+journey --date 2025-10-22 Note for specific date
 
-# Add note for yesterday
-journey --relative-date 1 "Note for yesterday"
+# Add note for yesterday (no quotes needed)
+journey --relative-date 1 Note for yesterday
 
-# Add note with specific time
-journey --time "14:30" "Note with specific time"
+# Add note with specific time (no quotes needed)
+journey --time 14:30 Note with specific time
+
+# Force 12-hour format parsing (compact format, no quotes needed)
+journey --time 2:30PM --time-format 12h Note with 12h format
+
+# Force 24-hour format parsing (no quotes needed)
+journey --time 14:30 --time-format 24h Note with 24h format
 ```
 
 ### List Notes
@@ -132,6 +138,7 @@ date: 2025-10-24
 - `-d, --date <DATE>`: Specify date in YYYY-MM-DD format
 - `-r, --relative-date <DAYS>`: Days ago (0 = today, 1 = yesterday)
 - `-t, --time <TIME>`: Specify time in HH:MM or HH:MM:SS format
+- `--time-format <FORMAT>`: Override time format (12h|24h)
 - `-v, --vault <NAME>`: Specify vault name
 - `-l, --list`: List notes
 - `-e, --edit`: Edit notes
@@ -143,13 +150,13 @@ date: 2025-10-24
 # Create a vault
 journey init --path ~/journal --name daily
 
-# Add notes throughout the day
-journey "Morning coffee and planning"
-journey "Completed the project milestone"
-journey "Evening reflection on the day"
+# Add notes throughout the day (no quotes needed)
+journey Morning coffee and planning
+journey Completed the project milestone
+journey Evening reflection on the day
 
-# Add a note for yesterday
-journey --relative-date 1 "Forgot to log this yesterday"
+# Add a note for yesterday (no quotes needed)
+journey --relative-date 1 Forgot to log this yesterday
 
 # List all notes for today
 journey --list
@@ -157,8 +164,42 @@ journey --list
 # Edit today's notes
 journey --edit
 
-# Add a note with specific time
-journey --time "09:30" "Early morning meeting notes"
+# Add a note with specific time (no quotes needed)
+journey --time 09:30 "Early morning meeting notes"
+```
+
+## Time Format Override
+
+By default, Journey automatically detects and supports both 12-hour and 24-hour time formats based on your locale. However, you can override this behavior to force a specific format:
+
+### 12-Hour Format Override
+```bash
+# Force 12-hour format parsing (compact format, no quotes needed)
+journey --time 2:30PM --time-format 12h Meeting at 2:30 PM
+journey --time 2:30:45PM --time-format 12h Precise time
+journey --time 2:30PM --time-format 12h Compact format
+```
+
+### 24-Hour Format Override
+```bash
+# Force 24-hour format parsing (no quotes needed)
+journey --time 14:30 --time-format 24h Meeting at 14:30
+journey --time 14:30:45 --time-format 24h Precise time
+```
+
+### Use Cases
+- **Consistency**: Force a specific format across different locales
+- **Validation**: Ensure only certain time formats are accepted
+- **Integration**: Match external systems that use specific time formats
+
+### Error Handling
+If you specify a time format override that doesn't match the time string, Journey will return an error:
+```bash
+# This will fail - 12h time with 24h format override
+journey --time 2:30PM --time-format 24h This will fail
+
+# This will fail - 24h time with 12h format override  
+journey --time 14:30 --time-format 12h This will fail
 ```
 
 ## Development

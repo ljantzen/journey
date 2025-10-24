@@ -12,6 +12,7 @@ fn create_test_vault() -> (Vault, TempDir) {
         locale: "en-US".to_string(),
         phrases: HashMap::new(),
         section_name: None,
+        date_format: None,
     };
     (Vault::new(config), temp_dir)
 }
@@ -112,6 +113,7 @@ fn test_vault_with_section() {
         locale: "en-US".to_string(),
         phrases: HashMap::new(),
         section_name: Some("Daily Notes".to_string()),
+        date_format: None,
     };
     let vault = Vault::new(config);
     let date = NaiveDate::from_ymd_opt(2025, 10, 24).unwrap();

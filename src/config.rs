@@ -14,6 +14,7 @@ pub struct VaultConfig {
     pub locale: String,
     pub phrases: HashMap<String, String>,
     pub section_name: Option<String>,
+    pub date_format: Option<String>,
 }
 
 impl Default for Config {
