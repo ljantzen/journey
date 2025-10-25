@@ -5,6 +5,7 @@ Journey is a command-line journal application written in Rust that allows you to
 ## Features
 
 - **Vault Management**: Create and manage multiple journal vaults
+- **Obsidian Integration**: Import configuration from existing Obsidian vaults and plugins
 - **Automatic Timestamping**: Notes are automatically timestamped
 - **Flexible Date/Time**: Support for absolute dates, relative dates, and custom times
 - **Markdown Storage**: Notes are stored as markdown files with frontmatter
@@ -59,6 +60,7 @@ journey --edit                       # Edit notes
 **Journeyctl (Vault Management):**
 ```bash
 journeyctl init --path ~/journal     # Initialize vault
+journeyctl init --path ~/obsidian-vault --obsidian  # Initialize from Obsidian vault
 journeyctl list                      # List all vaults
 journeyctl set-default vault-name    # Set default vault
 journeyctl show-default              # Show current default
@@ -69,11 +71,14 @@ journeyctl unset-default             # Remove default vault
 
 1. **Initialize a vault**:
    ```bash
-   # Unix/Linux/macOS
+   # Regular vault (Unix/Linux/macOS)
    journeyctl init --path ~/my-journal --name personal
    
-   # Windows
+   # Regular vault (Windows)
    journeyctl init --path "%USERPROFILE%\my-journal" --name personal
+   
+   # Initialize from existing Obsidian vault
+   journeyctl init --path ~/Documents/MyObsidianVault --obsidian
    ```
 
 2. **Add a note**:
@@ -114,6 +119,134 @@ This provides a quick way to see your notes without needing to remember flags.
 
 ```bash
 journeyctl init --path /path/to/vault --name vault-name
+```
+
+### Obsidian Integration
+
+Journey can integrate with existing Obsidian vaults, automatically detecting and configuring from your Obsidian plugins.
+
+#### Basic Obsidian Vault Initialization
+
+```bash
+# Initialize from an existing Obsidian vault
+journeyctl init --path ~/Documents/MyObsidianVault --obsidian
+
+# With custom name
+journeyctl init --path ~/Documents/MyObsidianVault --name my-journal --obsidian
+```
+
+#### Supported Obsidian Plugins
+
+Journey automatically detects and configures from these Obsidian plugins:
+
+**Daily Notes (Core Plugin)**
+- Extracts date format, folder structure, and template settings
+- Maps to Journey's `date_format`, `file_path_format`, and `template_file`
+
+**Periodic Notes Plugin**
+- Extracts weekly, monthly, quarterly, and yearly format settings
+- Stores periodic note formats in Journey's `phrases` configuration
+
+**Journals Plugin**
+- Creates separate Journey vaults for each configured journal
+- Each journal becomes a separate vault with its own folder structure and date format
+- Supports multiple journals in a single Obsidian vault
+
+#### Multiple Journals Support
+
+When using the Journals plugin, Journey creates one vault per journal:
+
+```bash
+# If your Obsidian vault has 3 journals: "Personal", "Work", "Daily"
+journeyctl init --path ~/Documents/MyObsidianVault --obsidian
+
+# This creates 3 Journey vaults:
+# - MyObsidianVault-Personal
+# - MyObsidianVault-Work  
+# - MyObsidianVault-Daily
+```
+
+You can then use each vault independently:
+
+```bash
+# Add to Personal journal
+journey --vault MyObsidianVault-Personal "Personal note"
+
+# Add to Work journal
+journey --vault MyObsidianVault-Work "Work note"
+
+# Add to Daily journal
+journey --vault MyObsidianVault-Daily "Daily note"
+```
+
+#### Error Handling
+
+Journey provides clear error messages for invalid Obsidian vaults:
+
+```bash
+# Path doesn't exist
+journeyctl init --path /nonexistent/path --obsidian
+# Error: Obsidian vault path does not exist: /nonexistent/path
+
+# Path exists but isn't an Obsidian vault
+journeyctl init --path /regular/folder --obsidian
+# Error: Path is not a valid Obsidian vault (missing .obsidian directory): /regular/folder
+```
+
+#### Configuration Extraction
+
+Journey automatically extracts relevant settings from your Obsidian plugins:
+
+**From Daily Notes:**
+- Date format (e.g., `YYYY-MM-DD`)
+- Folder structure (e.g., `/Daily Notes`)
+- Template file (e.g., `Templates/Daily Note Template`)
+
+**From Periodic Notes:**
+- Weekly format (e.g., `YYYY-[W]ww`)
+- Monthly format (e.g., `YYYY-MM`)
+- Quarterly format (e.g., `YYYY-[Q]Q`)
+- Yearly format (e.g., `YYYY`)
+
+**From Journals Plugin:**
+- Journal-specific folder structures
+- Journal-specific date formats
+- Multiple journal configurations
+
+#### Example Generated Configuration
+
+After running `journeyctl init --path ~/MyObsidianVault --obsidian`, your `journey.yaml` might look like:
+
+```yaml
+vaults:
+  MyObsidianVault-Personal:
+    name: MyObsidianVault-Personal
+    path: /home/user/MyObsidianVault
+    locale: en_US.UTF-8
+    date_format: YYYY-MM-DD
+    file_path_format: Personal/{{date:y}}/{{date:MM}}
+    template_file: Templates/Personal Template
+    
+  MyObsidianVault-Work:
+    name: MyObsidianVault-Work
+    path: /home/user/MyObsidianVault
+    locale: en_US.UTF-8
+    date_format: YYYY-MM-DD
+    file_path_format: Work/{{date:y}}/{{date:MM}}
+    template_file: Templates/Work Template
+    
+  MyObsidianVault-Daily:
+    name: MyObsidianVault-Daily
+    path: /home/user/MyObsidianVault
+    locale: en_US.UTF-8
+    date_format: YYYY-MM-DD
+    file_path_format: 10-Journal/{{date:y}}/{{date:MM}}
+    template_file: Templates/Daily Note Template
+    phrases:
+      weekly_format: YYYY-[W]ww
+      monthly_format: YYYY-MM
+      quarterly_format: YYYY-[Q]Q
+      yearly_format: YYYY
 ```
 
 ### Vault Management
@@ -581,6 +714,9 @@ journeyctl init --path ~/journal --name daily
 
 # Create a vault (Windows)
 journeyctl init --path "%USERPROFILE%\journal" --name daily
+
+# Initialize from Obsidian vault
+journeyctl init --path ~/Documents/MyObsidianVault --obsidian
 
 # Add notes throughout the day (no quotes needed)
 journey Morning coffee and planning
