@@ -152,6 +152,7 @@ Journey automatically detects and configures from these Obsidian plugins:
 - Creates separate Journey vaults for each configured journal
 - Each journal becomes a separate vault with its own folder structure and date format
 - Supports multiple journals in a single Obsidian vault
+- Uses `{{date:y}}` and `{{date:MM}}` variables for folder structure compatibility
 
 #### Multiple Journals Support
 
@@ -225,7 +226,7 @@ vaults:
     path: /home/user/MyObsidianVault
     locale: en_US.UTF-8
     date_format: YYYY-MM-DD
-    file_path_format: Personal/{{date:y}}/{{date:MM}}
+    file_path_format: Personal/{{date:y}}/{{date:MM}}/{{date:MM}}-{day:02}.md
     template_file: Templates/Personal Template
     
   MyObsidianVault-Work:
@@ -233,7 +234,7 @@ vaults:
     path: /home/user/MyObsidianVault
     locale: en_US.UTF-8
     date_format: YYYY-MM-DD
-    file_path_format: Work/{{date:y}}/{{date:MM}}
+    file_path_format: Work/{{date:y}}/{{date:MM}}/{{date:MM}}-{day:02}.md
     template_file: Templates/Work Template
     
   MyObsidianVault-Daily:
@@ -241,7 +242,7 @@ vaults:
     path: /home/user/MyObsidianVault
     locale: en_US.UTF-8
     date_format: YYYY-MM-DD
-    file_path_format: 10-Journal/{{date:y}}/{{date:MM}}
+    file_path_format: 10-Journal/{{date:y}}/{{date:MM}}/{{date:MM}}-{day:02}.md
     template_file: Templates/Daily Note Template
     phrases:
       weekly_format: YYYY-[W]ww
@@ -661,8 +662,10 @@ vaults:
 - `{year}` - Full year (e.g., 2025)
 - `{month}` - Month number (e.g., 10)
 - `{month:02}` - Zero-padded month (e.g., 10, 03)
+- `{date:MM}` / `{{date:MM}}` - Zero-padded month (e.g., 01, 12) - Journals plugin compatibility
 - `{date}` - Day number (e.g., 24)
 - `{date:02}` - Zero-padded day (e.g., 24, 05)
+- `{date:y}` / `{{date:y}}` - Two-digit year (e.g., 25, 24) - Journals plugin compatibility
 - `{day}` - Alias for `{date}`
 - `{Weekday}` - Full weekday name capitalized (e.g., Monday, Tuesday)
 - `{weekday}` - Full weekday name lowercase (e.g., monday, tuesday)
@@ -682,6 +685,11 @@ vaults:
 - `"logs/{weekday}/{Weekday_short}_{year}-{month:02}-{date:02}.md"` → `logs/friday/Fri_2025-10-24.md`
 - `"archives/{Month}/{year}-{month:02}-{date:02}.md"` → `archives/October/2025-10-24.md`
 - `"logs/{month_name}/{Month_short}_{year}-{month:02}-{date:02}.md"` → `logs/october/Oct_2025-10-24.md`
+
+**Journals Plugin Compatibility Examples:**
+- `"{{date:y}}/{{date:MM}}/{{date:MM}}-{day:02}.md"` → `25/01/01-15.md`
+- `"journals/{date:y}/{date:MM}/{date:02}.md"` → `journals/25/01/15.md`
+- `"Personal/{{date:y}}/{{date:MM}}/{{date:MM}}-{day:02}.md"` → `Personal/25/01/01-15.md`
 
 **Default Behavior:**
 If no `file_path_format` is specified, notes are stored as `YYYY-MM-DD.md` in the vault root directory.
