@@ -1,0 +1,7 @@
+{
+  "enabled": true,
+  "weeklyFormat": "YYYY-[W]ww",
+  "monthlyFormat": "YYYY-MM",
+  "quarterlyFormat": "YYYY-[Q]Q",
+  "yearlyFormat": "YYYY"
+}

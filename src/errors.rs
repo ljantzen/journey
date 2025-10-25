@@ -11,6 +11,9 @@ pub enum JourneyError {
     #[error("YAML parsing error: {0}")]
     Yaml(#[from] serde_yaml_ng::Error),
 
+    #[error("JSON parsing error: {0}")]
+    Json(#[from] serde_json::Error),
+
     #[error("Date/time parsing error: {0}")]
     DateTime(#[from] chrono::ParseError),
 

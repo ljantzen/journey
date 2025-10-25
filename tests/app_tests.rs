@@ -205,7 +205,7 @@ fn test_init_vault_with_name() {
     
     // Test init with explicit name using temporary directory
     let vault_temp_dir = TempDir::new().unwrap();
-    let result = app.init_vault(vault_temp_dir.path().to_path_buf(), Some("test-vault".to_string()));
+    let result = app.init_vault(vault_temp_dir.path().to_path_buf(), Some("test-vault".to_string()), false);
     assert!(result.is_ok());
     
     // Keep temp directories alive to prevent cleanup during test
@@ -233,7 +233,7 @@ fn test_init_vault_without_name() {
     
     // Test init without name - should use path basename using temporary directory
     let vault_temp_dir = TempDir::new().unwrap();
-    let result = app.init_vault(vault_temp_dir.path().to_path_buf(), None);
+    let result = app.init_vault(vault_temp_dir.path().to_path_buf(), None, false);
     assert!(result.is_ok());
     
     // Keep temp directories alive to prevent cleanup during test
@@ -257,7 +257,7 @@ fn test_init_vault_invalid_path() {
     let mut app = App::new_for_init().unwrap();
     
     // Test init with invalid path (empty)
-    let result = app.init_vault(PathBuf::from(""), None);
+    let result = app.init_vault(PathBuf::from(""), None, false);
     assert!(result.is_err());
     
     // Check that the error message is appropriate

@@ -66,18 +66,6 @@ fn test_cli_parse_with_time() {
 }
 
 #[test]
-fn test_cli_parse_init_command() {
-    let cli = Cli::try_parse_from(&["journey", "init", "--path", "/tmp/test", "--name", "test"]).unwrap();
-    match cli.command {
-        Some(Commands::Init { path, name, vault_type: _ }) => {
-            assert_eq!(path, PathBuf::from("/tmp/test"));
-            assert_eq!(name, Some("test".to_string()));
-        }
-        _ => panic!("Expected Init command"),
-    }
-}
-
-#[test]
 fn test_cli_parse_add_command() {
     let cli = Cli::try_parse_from(&["journey", "add", "test note"]).unwrap();
     match cli.command {

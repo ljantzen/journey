@@ -1,0 +1,41 @@
+#!/bin/bash
+# Test script to create a mock Obsidian vault for testing
+
+# Create test directory structure
+mkdir -p test_obsidian/.obsidian/plugins/periodic-notes
+mkdir -p test_obsidian/.obsidian/plugins/journals
+
+# Create app.json with Daily Notes configuration
+cat > test_obsidian/.obsidian/app.json << 'EOF'
+{
+  "dailyNotes": {
+    "enabled": true,
+    "format": "YYYY-MM-DD",
+    "folder": "/Daily Notes",
+    "template": "Templates/Daily Note Template.md"
+  }
+}
+EOF
+
+# Create Periodic Notes plugin data
+cat > test_obsidian/.obsidian/plugins/periodic-notes/data.json << 'EOF'
+{
+  "enabled": true,
+  "weeklyFormat": "YYYY-[W]ww",
+  "monthlyFormat": "YYYY-MM",
+  "quarterlyFormat": "YYYY-[Q]Q",
+  "yearlyFormat": "YYYY"
+}
+EOF
+
+# Create Journals plugin data
+cat > test_obsidian/.obsidian/plugins/journals/data.json << 'EOF'
+{
+  "enabled": true,
+  "journalFolder": "/Journals",
+  "dateFormat": "YYYY-MM-DD"
+}
+EOF
+
+echo "Test Obsidian vault created at: test_obsidian"
+echo "You can now test with: ./target/release/journeyctl init --path test_obsidian --obsidian"

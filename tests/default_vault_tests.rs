@@ -132,3 +132,4 @@ fn test_default_vault_fallback() {
     config.default_vault = Some("nonexistent".to_string());
     assert!(config.get_default_vault().is_none());
 }
+

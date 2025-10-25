@@ -7,6 +7,48 @@ use chrono::{Local, NaiveDate};
 use std::env;
 use std::process::Command;
 
+#[derive(Debug, Clone)]
+struct DailyNotesConfig {
+    enabled: bool,
+    format: String,
+    folder: String,
+    template: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct PeriodicNotesConfig {
+    enabled: bool,
+    weekly_format: String,
+    monthly_format: String,
+    quarterly_format: String,
+    yearly_format: String,
+}
+
+#[derive(Debug, Clone)]
+struct JournalsConfig {
+    enabled: bool,
+    name: String,
+    journal_folder: String,
+    date_format: String,
+}
+
+#[derive(Debug, Clone)]
+struct ObsidianPluginConfigs {
+    daily_notes: Option<DailyNotesConfig>,
+    periodic_notes: Option<PeriodicNotesConfig>,
+    journals: Vec<JournalsConfig>,
+}
+
+impl ObsidianPluginConfigs {
+    fn new() -> Self {
+        Self {
+            daily_notes: None,
+            periodic_notes: None,
+            journals: Vec::new(),
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct CliArgs {
     pub vault: Option<String>,
@@ -74,8 +116,8 @@ impl App {
 
     pub fn run_journeyctl_command(&mut self, command: crate::journeyctl::Commands) -> Result<(), JourneyError> {
         match command {
-            crate::journeyctl::Commands::Init { path, name, vault_type: _ } => {
-                self.init_vault(path, name)
+            crate::journeyctl::Commands::Init { path, name, vault_type: _, obsidian } => {
+                self.init_vault(path, name, obsidian)
             }
             crate::journeyctl::Commands::List => {
                 self.list_vaults()
@@ -136,7 +178,15 @@ impl App {
         }
     }
 
-    pub fn init_vault(&mut self, path: std::path::PathBuf, name: Option<String>) -> Result<(), JourneyError> {
+    pub fn init_vault(&mut self, path: std::path::PathBuf, name: Option<String>, obsidian: bool) -> Result<(), JourneyError> {
+        if obsidian {
+            self.init_obsidian_vault(path, name)
+        } else {
+            self.init_regular_vault(path, name)
+        }
+    }
+
+    fn init_regular_vault(&mut self, path: std::path::PathBuf, name: Option<String>) -> Result<(), JourneyError> {
         // Create vault directory
         std::fs::create_dir_all(&path)?;
 
@@ -170,6 +220,258 @@ impl App {
         self.config_manager.save_config(&self.config)?;
 
         println!("Vault '{}' initialized successfully!", vault_name);
+        Ok(())
+    }
+
+    fn init_obsidian_vault(&mut self, path: std::path::PathBuf, name: Option<String>) -> Result<(), JourneyError> {
+        // Validate that the path exists and is an Obsidian vault
+        if !path.exists() {
+            return Err(JourneyError::Config(format!("Obsidian vault path does not exist: {}", path.display())));
+        }
+
+        // Check if it's a valid Obsidian vault by looking for .obsidian directory
+        let obsidian_dir = path.join(".obsidian");
+        if !obsidian_dir.exists() {
+            return Err(JourneyError::Config(format!("Path is not a valid Obsidian vault (missing .obsidian directory): {}", path.display())));
+        }
+
+        // Determine vault name - use provided name or path basename
+        let vault_name = if let Some(name) = name {
+            name
+        } else {
+            path.file_name()
+                .and_then(|n| n.to_str())
+                .ok_or_else(|| JourneyError::Config("Invalid path: cannot extract basename".to_string()))?
+                .to_string()
+        };
+
+        // Check for required Obsidian plugins
+        let plugin_configs = self.check_obsidian_plugins(&obsidian_dir)?;
+
+        // Get system locale
+        let locale = self.get_system_locale();
+
+        // Create vault config with Obsidian-specific settings
+        let mut vault_config = crate::config::VaultConfig {
+            name: vault_name.clone(),
+            path,
+            locale,
+            phrases: std::collections::HashMap::new(),
+            section_name: None,
+            date_format: None,
+            template_file: None,
+            file_path_format: None,
+        };
+
+        // Apply Obsidian plugin configurations (excluding journals for now)
+        self.apply_obsidian_config(&mut vault_config, &plugin_configs)?;
+
+        // Create vaults for each journal
+        let mut vault_count = 0;
+        for journal in &plugin_configs.journals {
+            let mut journal_vault_config = vault_config.clone();
+            
+            // Set journal-specific name
+            journal_vault_config.name = format!("{}-{}", vault_name, journal.name);
+            
+            // Apply journal-specific configuration
+            journal_vault_config.file_path_format = Some(journal.journal_folder.clone());
+            if journal_vault_config.date_format.is_none() {
+                journal_vault_config.date_format = Some(journal.date_format.clone());
+            }
+            
+            // Add journal vault to config
+            self.config.add_vault(journal_vault_config);
+            vault_count += 1;
+        }
+
+        // If no journals found, create a single vault with the base configuration
+        if vault_count == 0 {
+            self.config.add_vault(vault_config);
+            vault_count = 1;
+        }
+
+        // Save configuration
+        self.config_manager.save_config(&self.config)?;
+
+        println!("Obsidian vault '{}' initialized successfully with {} vault(s)!", vault_name, vault_count);
+        Ok(())
+    }
+
+    fn check_obsidian_plugins(&self, obsidian_dir: &std::path::Path) -> Result<ObsidianPluginConfigs, JourneyError> {
+        let mut configs = ObsidianPluginConfigs::new();
+
+        // Check for Daily Notes core plugin
+        if let Ok(daily_notes_config) = self.check_daily_notes_plugin(obsidian_dir) {
+            configs.daily_notes = Some(daily_notes_config);
+        }
+
+        // Check for Periodic Notes plugin
+        if let Ok(periodic_notes_config) = self.check_periodic_notes_plugin(obsidian_dir) {
+            configs.periodic_notes = Some(periodic_notes_config);
+        }
+
+        // Check for Journals plugin
+        if let Ok(journals_configs) = self.check_journals_plugin(obsidian_dir) {
+            configs.journals = journals_configs;
+        }
+
+        Ok(configs)
+    }
+
+    fn check_daily_notes_plugin(&self, obsidian_dir: &std::path::Path) -> Result<DailyNotesConfig, JourneyError> {
+        let app_json_path = obsidian_dir.join("app.json");
+        if !app_json_path.exists() {
+            return Err(JourneyError::Config("Obsidian app.json not found".to_string()));
+        }
+
+        let app_json_content = std::fs::read_to_string(&app_json_path)?;
+        let app_config: serde_json::Value = serde_json::from_str(&app_json_content)?;
+
+        // Check if Daily Notes is enabled
+        if let Some(daily_notes) = app_config.get("dailyNotes") {
+            if let Some(enabled) = daily_notes.get("enabled") {
+                if enabled.as_bool().unwrap_or(false) {
+                    let format = daily_notes.get("format").and_then(|v| v.as_str()).unwrap_or("YYYY-MM-DD").to_string();
+                    let folder = daily_notes.get("folder").and_then(|v| v.as_str()).unwrap_or("/").to_string();
+                    let template = daily_notes.get("template").and_then(|v| v.as_str()).map(|s| s.to_string());
+
+                    return Ok(DailyNotesConfig {
+                        enabled: true,
+                        format,
+                        folder,
+                        template,
+                    });
+                }
+            }
+        }
+
+        Err(JourneyError::Config("Daily Notes plugin not enabled".to_string()))
+    }
+
+    fn check_periodic_notes_plugin(&self, obsidian_dir: &std::path::Path) -> Result<PeriodicNotesConfig, JourneyError> {
+        let plugins_dir = obsidian_dir.join("plugins");
+        let periodic_notes_dir = plugins_dir.join("periodic-notes");
+        
+        if !periodic_notes_dir.exists() {
+            return Err(JourneyError::Config("Periodic Notes plugin not installed".to_string()));
+        }
+
+        let data_json_path = periodic_notes_dir.join("data.json");
+        if !data_json_path.exists() {
+            return Err(JourneyError::Config("Periodic Notes plugin data not found".to_string()));
+        }
+
+        let data_content = std::fs::read_to_string(&data_json_path)?;
+        let plugin_data: serde_json::Value = serde_json::from_str(&data_content)?;
+
+        // Check if plugin is enabled
+        if let Some(enabled) = plugin_data.get("enabled") {
+            if !enabled.as_bool().unwrap_or(false) {
+                return Err(JourneyError::Config("Periodic Notes plugin not enabled".to_string()));
+            }
+        }
+
+        // Extract configuration
+        let weekly_format = plugin_data.get("weeklyFormat").and_then(|v| v.as_str()).unwrap_or("YYYY-[W]ww").to_string();
+        let monthly_format = plugin_data.get("monthlyFormat").and_then(|v| v.as_str()).unwrap_or("YYYY-MM").to_string();
+        let quarterly_format = plugin_data.get("quarterlyFormat").and_then(|v| v.as_str()).unwrap_or("YYYY-[Q]Q").to_string();
+        let yearly_format = plugin_data.get("yearlyFormat").and_then(|v| v.as_str()).unwrap_or("YYYY").to_string();
+
+        Ok(PeriodicNotesConfig {
+            enabled: true,
+            weekly_format,
+            monthly_format,
+            quarterly_format,
+            yearly_format,
+        })
+    }
+
+    fn check_journals_plugin(&self, obsidian_dir: &std::path::Path) -> Result<Vec<JournalsConfig>, JourneyError> {
+        let plugins_dir = obsidian_dir.join("plugins");
+        let journals_dir = plugins_dir.join("journals");
+        
+        if !journals_dir.exists() {
+            return Err(JourneyError::Config("Journals plugin not installed".to_string()));
+        }
+
+        let data_json_path = journals_dir.join("data.json");
+        if !data_json_path.exists() {
+            return Err(JourneyError::Config("Journals plugin data not found".to_string()));
+        }
+
+        let data_content = std::fs::read_to_string(&data_json_path)?;
+        let plugin_data: serde_json::Value = serde_json::from_str(&data_content)?;
+
+        // Check if plugin is enabled (Journals plugin doesn't have a simple enabled field)
+        // We'll consider it enabled if it has journals configured
+        if !plugin_data.get("journals").is_some() {
+            return Err(JourneyError::Config("Journals plugin not configured".to_string()));
+        }
+
+        // Extract configuration from all journal entries
+        let journals = plugin_data.get("journals")
+            .ok_or_else(|| JourneyError::Config("No journals configured".to_string()))?;
+        
+        let mut journal_configs = Vec::new();
+        
+        if let Some(journals_obj) = journals.as_object() {
+            for (journal_name, journal_data) in journals_obj {
+                // Extract configuration from each journal entry
+                let journal_folder = journal_data.get("folder")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("/")
+                    .to_string();
+                
+                let date_format = journal_data.get("dateFormat")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("YYYY-MM-DD")
+                    .to_string();
+
+                journal_configs.push(JournalsConfig {
+                    enabled: true,
+                    name: journal_name.clone(),
+                    journal_folder,
+                    date_format,
+                });
+            }
+        } else {
+            return Err(JourneyError::Config("Invalid journals configuration".to_string()));
+        }
+
+        if journal_configs.is_empty() {
+            return Err(JourneyError::Config("No journal entries found".to_string()));
+        }
+
+        Ok(journal_configs)
+    }
+
+    fn apply_obsidian_config(&mut self, vault_config: &mut crate::config::VaultConfig, plugin_configs: &ObsidianPluginConfigs) -> Result<(), JourneyError> {
+        // Apply Daily Notes configuration
+        if let Some(daily_notes) = &plugin_configs.daily_notes {
+            if daily_notes.enabled {
+                vault_config.date_format = Some(daily_notes.format.clone());
+                vault_config.file_path_format = Some(daily_notes.folder.clone());
+                
+                if let Some(template) = &daily_notes.template {
+                    vault_config.template_file = Some(template.clone());
+                }
+            }
+        }
+
+        // Apply Periodic Notes configuration
+        if let Some(periodic_notes) = &plugin_configs.periodic_notes {
+            if periodic_notes.enabled {
+                // Store periodic notes configuration in phrases for now
+                vault_config.phrases.insert("weekly_format".to_string(), periodic_notes.weekly_format.clone());
+                vault_config.phrases.insert("monthly_format".to_string(), periodic_notes.monthly_format.clone());
+                vault_config.phrases.insert("quarterly_format".to_string(), periodic_notes.quarterly_format.clone());
+                vault_config.phrases.insert("yearly_format".to_string(), periodic_notes.yearly_format.clone());
+            }
+        }
+
+        // Apply Journals configuration - this will be handled separately to create multiple vaults
+
         Ok(())
     }
 
@@ -238,9 +540,10 @@ impl App {
                 .ok_or_else(|| JourneyError::VaultNotFound(name.to_string()))?
         } else {
             // No vault specified - use default vault or smart selection
-            if let Some(default_vault) = self.config.get_default_vault() {
-                // Use the default vault
-                default_vault
+            if let Some(default_name) = &self.config.default_vault {
+                // Use the explicitly set default vault
+                self.config.get_vault(default_name)
+                    .ok_or_else(|| JourneyError::VaultNotFound(format!("Default vault '{}' not found", default_name)))?
             } else if self.config.vaults.len() == 1 {
                 // Only one vault exists - use it automatically
                 self.config.vaults.values().next()

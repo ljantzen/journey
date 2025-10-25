@@ -1,0 +1,5 @@
+{
+  "enabled": true,
+  "journalFolder": "/Journals",
+  "dateFormat": "YYYY-MM-DD"
+}
