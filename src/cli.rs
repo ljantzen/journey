@@ -84,5 +84,14 @@ pub enum Commands {
     List,
     /// Edit notes
     Edit,
+    /// Set the default vault
+    SetDefault {
+        /// Name of the vault to set as default
+        vault_name: String,
+    },
+    /// Clear the default vault
+    ClearDefault,
+    /// Show current default vault
+    ShowDefault,
 }
 

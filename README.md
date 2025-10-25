@@ -86,6 +86,26 @@ This provides a quick way to see your notes without needing to remember flags.
 journey init --path /path/to/vault --name vault-name
 ```
 
+### Default Vault Management
+
+When you have multiple vaults, you can set one as the default to avoid specifying `--vault` every time:
+
+```bash
+# Set a default vault
+journey set-default vault-name
+
+# Show current default vault
+journey show-default
+
+# Clear the default vault
+journey clear-default
+```
+
+**Benefits:**
+- No need to specify `--vault` for most operations
+- Commands like `journey "My note"` will automatically use the default vault
+- Still works with `--vault` to override the default when needed
+
 ### Add Notes
 ```bash
 # Add note for today (default behavior)

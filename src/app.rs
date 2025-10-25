@@ -82,6 +82,15 @@ impl App {
                 let cli_args = CliArgs { vault, date, relative_date, time, time_format };
                 self.edit_notes(&cli_args)
             }
+            crate::cli::Commands::SetDefault { vault_name } => {
+                self.set_default_vault(&vault_name)
+            }
+            crate::cli::Commands::ClearDefault => {
+                self.clear_default_vault()
+            }
+            crate::cli::Commands::ShowDefault => {
+                self.show_default_vault()
+            }
         }
     }
 
@@ -213,15 +222,18 @@ impl App {
             self.config.get_vault(name)
                 .ok_or_else(|| JourneyError::VaultNotFound(name.to_string()))?
         } else {
-            // No vault specified - use smart selection
-            if self.config.vaults.len() == 1 {
+            // No vault specified - use default vault or smart selection
+            if let Some(default_vault) = self.config.get_default_vault() {
+                // Use the default vault
+                default_vault
+            } else if self.config.vaults.len() == 1 {
                 // Only one vault exists - use it automatically
                 self.config.vaults.values().next()
                     .ok_or_else(|| JourneyError::VaultNotFound("No vaults configured".to_string()))?
             } else if self.config.vaults.len() > 1 {
-                // Multiple vaults exist - need to specify which one
+                // Multiple vaults exist - need to specify which one or set a default
                 return Err(JourneyError::VaultNotFound(
-                    format!("Multiple vaults available: {}. Please specify --vault", 
+                    format!("Multiple vaults available: {}. Please specify --vault or set a default vault", 
                         self.config.vaults.keys().map(|s| s.as_str()).collect::<Vec<_>>().join(", "))
                 ));
             } else {
@@ -290,5 +302,40 @@ impl App {
         env::var("LANG")
             .or_else(|_| env::var("LC_ALL"))
             .unwrap_or_else(|_| "en-US".to_string())
+    }
+
+    fn set_default_vault(&mut self, vault_name: &str) -> Result<(), JourneyError> {
+        match self.config.set_default_vault(vault_name) {
+            Ok(()) => {
+                self.config_manager.save_config(&self.config)?;
+                println!("Default vault set to '{}'", vault_name);
+                Ok(())
+            }
+            Err(error) => Err(JourneyError::Config(error))
+        }
+    }
+
+    fn clear_default_vault(&mut self) -> Result<(), JourneyError> {
+        self.config.clear_default_vault();
+        self.config_manager.save_config(&self.config)?;
+        println!("Default vault cleared");
+        Ok(())
+    }
+
+    fn show_default_vault(&self) -> Result<(), JourneyError> {
+        if let Some(default_name) = &self.config.default_vault {
+            if let Some(vault) = self.config.get_vault(default_name) {
+                println!("Default vault: {} ({})", default_name, vault.path.display());
+            } else {
+                println!("Default vault '{}' is set but vault not found", default_name);
+            }
+        } else {
+            println!("No default vault set");
+            if self.config.vaults.len() > 1 {
+                println!("Available vaults: {}", 
+                    self.config.vaults.keys().map(|s| s.as_str()).collect::<Vec<_>>().join(", "));
+            }
+        }
+        Ok(())
     }
 }

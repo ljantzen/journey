@@ -6,6 +6,7 @@ use std::env;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub vaults: HashMap<String, VaultConfig>,
+    pub default_vault: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -44,6 +45,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             vaults: HashMap::new(),
+            default_vault: None,
         }
     }
 }
@@ -162,8 +164,25 @@ impl Config {
     }
 
     pub fn get_default_vault(&self) -> Option<&VaultConfig> {
-        // For now, return the first vault if any exist
-        self.vaults.values().next()
+        if let Some(default_name) = &self.default_vault {
+            self.vaults.get(default_name)
+        } else {
+            // Fallback to first vault if no default is set
+            self.vaults.values().next()
+        }
+    }
+
+    pub fn set_default_vault(&mut self, vault_name: &str) -> Result<(), String> {
+        if self.vaults.contains_key(vault_name) {
+            self.default_vault = Some(vault_name.to_string());
+            Ok(())
+        } else {
+            Err(format!("Vault '{}' not found", vault_name))
+        }
+    }
+
+    pub fn clear_default_vault(&mut self) {
+        self.default_vault = None;
     }
 }
 
