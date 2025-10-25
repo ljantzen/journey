@@ -222,19 +222,45 @@ impl Vault {
         }
 
         let content = fs::read_to_string(&note_path)?;
+        let lines: Vec<&str> = content.lines().collect();
         let mut notes = Vec::new();
         
-        for line in content.lines() {
-            let trimmed = line.trim();
-            // Check for bullet format
-            if trimmed.starts_with("- [") {
-                notes.push(line.to_string());
+        // If section_name is configured, only list notes within that section
+        if let Some(section_name) = &self.config.section_name {
+            if let Some(section_start) = self.find_section(&content, section_name) {
+                let section_end = self.find_section_end(&lines, section_start);
+                
+                // Only process lines within the section
+                for line in &lines[section_start..section_end] {
+                    let trimmed = line.trim();
+                    // Check for bullet format
+                    if trimmed.starts_with("- [") {
+                        notes.push(line.to_string());
+                    }
+                    // Check for table format (but not table headers or separators)
+                    else if trimmed.starts_with("|") && !trimmed.starts_with("|---") && trimmed.contains("|") {
+                        // Skip if it looks like a table header
+                        if !trimmed.contains("Time") && !trimmed.contains("Content") && !trimmed.contains("Note") {
+                            notes.push(line.to_string());
+                        }
+                    }
+                }
             }
-            // Check for table format (but not table headers or separators)
-            else if trimmed.starts_with("|") && !trimmed.starts_with("|---") && trimmed.contains("|") {
-                // Skip if it looks like a table header
-                if !trimmed.contains("Time") && !trimmed.contains("Content") && !trimmed.contains("Note") {
+            // If section doesn't exist, return empty list
+        } else {
+            // No section configured, list all notes in the file
+            for line in &lines {
+                let trimmed = line.trim();
+                // Check for bullet format
+                if trimmed.starts_with("- [") {
                     notes.push(line.to_string());
+                }
+                // Check for table format (but not table headers or separators)
+                else if trimmed.starts_with("|") && !trimmed.starts_with("|---") && trimmed.contains("|") {
+                    // Skip if it looks like a table header
+                    if !trimmed.contains("Time") && !trimmed.contains("Content") && !trimmed.contains("Note") {
+                        notes.push(line.to_string());
+                    }
                 }
             }
         }
