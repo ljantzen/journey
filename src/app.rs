@@ -18,17 +18,11 @@ struct DailyNotesConfig {
 #[derive(Debug, Clone)]
 struct PeriodicNotesConfig {
     enabled: bool,
-    weekly_format: String,
-    monthly_format: String,
-    quarterly_format: String,
-    yearly_format: String,
 }
 
 #[derive(Debug, Clone)]
 struct JournalsConfig {
     name: String,
-    journal_folder: String,
-    date_format: String,
 }
 
 #[derive(Debug, Clone)]
@@ -215,10 +209,6 @@ impl App {
             date_format: None,
             template_file: None,
             file_path_format: None,
-            weekly_format: None,
-            monthly_format: None,
-            quarterly_format: None,
-            yearly_format: None,
             note_format: None,
         };
 
@@ -272,7 +262,7 @@ impl App {
         if !plugin_configs.journals.is_empty() {
             println!("  ✅ Journals plugin - enabled ({} journal(s) configured)", plugin_configs.journals.len());
             for journal in &plugin_configs.journals {
-                println!("    📝 Journal: '{}' (folder: {})", journal.name, journal.journal_folder);
+                println!("    📝 Journal: '{}'", journal.name);
             }
         } else {
             println!("  ❌ Journals plugin - not configured");
@@ -291,10 +281,6 @@ impl App {
             date_format: None,
             template_file: None,
             file_path_format: None,
-            weekly_format: None,
-            monthly_format: None,
-            quarterly_format: None,
-            yearly_format: None,
             note_format: None,
         };
 
@@ -310,10 +296,6 @@ impl App {
             journal_vault_config.name = format!("{}-{}", vault_name, journal.name);
             
             // Apply journal-specific configuration
-            journal_vault_config.file_path_format = Some(journal.journal_folder.clone());
-            if journal_vault_config.date_format.is_none() {
-                journal_vault_config.date_format = Some(journal.date_format.clone());
-            }
             
             // Add journal vault to config
             self.config.add_vault(journal_vault_config);
@@ -332,15 +314,26 @@ impl App {
         println!();
         println!("🎉 Obsidian vault '{}' initialized successfully with {} vault(s)!", vault_name, vault_count);
         
+        // Print important configuration reminder
+        println!();
+        println!("⚠️  IMPORTANT: Please review your configuration and add the missing essential information:");
+        println!("   • section_name: The default section name in the daily note where journey will put your notes (e.g., '## Todays notes')");
+        println!("   • note_format: The format for your notes ('bullet' or 'table')");
+        println!("   • file_path_format: template string journey uses to determine the location of the daily note");
+        println!("   • It can contain variables like {{year}}, {{month}}, {{day}}, {{weekday}}, {{weekday_short}}, {{month_name}}, {{month_short}}, etc");
+        println!("   • The variables are replaced with the actual values when the note is added");
+        println!();
+        println!();
+        println!("   You can edit the configuration file at: {}", self.config_manager.config_path.display());
+        println!();
+        
         // Print configuration summary
         if let Some(daily_notes) = &plugin_configs.daily_notes {
             println!("📅 Daily Notes: format='{}', folder='{}'", daily_notes.format, daily_notes.folder);
         }
         
         if let Some(periodic_notes) = &plugin_configs.periodic_notes {
-            println!("📊 Periodic Notes: weekly='{}', monthly='{}', quarterly='{}', yearly='{}'", 
-                periodic_notes.weekly_format, periodic_notes.monthly_format, 
-                periodic_notes.quarterly_format, periodic_notes.yearly_format);
+            println!("📊 Periodic Notes: enabled={}", periodic_notes.enabled);
         }
         
         if !plugin_configs.journals.is_empty() {
@@ -431,17 +424,8 @@ impl App {
         }
 
         // Extract configuration
-        let weekly_format = plugin_data.get("weeklyFormat").and_then(|v| v.as_str()).unwrap_or("YYYY-[W]ww").to_string();
-        let monthly_format = plugin_data.get("monthlyFormat").and_then(|v| v.as_str()).unwrap_or("YYYY-MM").to_string();
-        let quarterly_format = plugin_data.get("quarterlyFormat").and_then(|v| v.as_str()).unwrap_or("YYYY-[Q]Q").to_string();
-        let yearly_format = plugin_data.get("yearlyFormat").and_then(|v| v.as_str()).unwrap_or("YYYY").to_string();
-
         Ok(PeriodicNotesConfig {
             enabled: true,
-            weekly_format,
-            monthly_format,
-            quarterly_format,
-            yearly_format,
         })
     }
 
@@ -474,22 +458,10 @@ impl App {
         let mut journal_configs = Vec::new();
         
         if let Some(journals_obj) = journals.as_object() {
-            for (journal_name, journal_data) in journals_obj {
+            for (journal_name, _journal_data) in journals_obj {
                 // Extract configuration from each journal entry
-                let journal_folder = journal_data.get("folder")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("/")
-                    .to_string();
-                
-                let date_format = journal_data.get("dateFormat")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("YYYY-MM-DD")
-                    .to_string();
-
                 journal_configs.push(JournalsConfig {
                     name: journal_name.clone(),
-                    journal_folder,
-                    date_format,
                 });
             }
         } else {
@@ -519,11 +491,7 @@ impl App {
         // Apply Periodic Notes configuration
         if let Some(periodic_notes) = &plugin_configs.periodic_notes {
             if periodic_notes.enabled {
-                // Store periodic notes configuration in dedicated fields
-                vault_config.weekly_format = Some(periodic_notes.weekly_format.clone());
-                vault_config.monthly_format = Some(periodic_notes.monthly_format.clone());
-                vault_config.quarterly_format = Some(periodic_notes.quarterly_format.clone());
-                vault_config.yearly_format = Some(periodic_notes.yearly_format.clone());
+                // Periodic notes configuration is enabled
             }
         }
 

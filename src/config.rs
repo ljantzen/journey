@@ -21,11 +21,6 @@ pub struct VaultConfig {
     #[serde(deserialize_with = "deserialize_template_file_with_expansion")]
     pub template_file: Option<String>,
     pub file_path_format: Option<String>,
-    // Periodic date formats from Obsidian Periodic Notes plugin
-    pub weekly_format: Option<String>,
-    pub monthly_format: Option<String>,
-    pub quarterly_format: Option<String>,
-    pub yearly_format: Option<String>,
     // Note format configuration
     pub note_format: Option<NoteFormat>,
 }
@@ -167,10 +162,6 @@ impl VaultConfig {
             date_format: None,
             template_file: None,
             file_path_format: None,
-            weekly_format: None,
-            monthly_format: None,
-            quarterly_format: None,
-            yearly_format: None,
             note_format: None,
         }
     }
@@ -186,10 +177,6 @@ impl VaultConfig {
             date_format: None,
             template_file: None,
             file_path_format: None,
-            weekly_format: None,
-            monthly_format: None,
-            quarterly_format: None,
-            yearly_format: None,
             note_format: None,
         }
     }
