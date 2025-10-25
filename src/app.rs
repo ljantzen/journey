@@ -49,6 +49,7 @@ pub struct CliArgs {
     pub relative_date: Option<i64>,
     pub time: Option<String>,
     pub time_format: Option<String>,
+    pub category: Option<String>,
 }
 
 pub struct App {
@@ -133,15 +134,15 @@ impl App {
     fn handle_command_with_args(&mut self, cmd: crate::cli::Commands, vault: Option<String>, date: Option<String>, relative_date: Option<i64>, time: Option<String>, time_format: Option<String>) -> Result<(), JourneyError> {
         match cmd {
             crate::cli::Commands::Add { content } => {
-                let cli_args = CliArgs { vault, date, relative_date, time, time_format };
+                let cli_args = CliArgs { vault, date, relative_date, time, time_format, category: None };
                 self.add_note(&content, &cli_args)
             }
             crate::cli::Commands::List => {
-                let cli_args = CliArgs { vault, date, relative_date, time, time_format };
+                let cli_args = CliArgs { vault, date, relative_date, time, time_format, category: None };
                 self.list_notes(&cli_args)
             }
             crate::cli::Commands::Edit => {
-                let cli_args = CliArgs { vault, date, relative_date, time, time_format };
+                let cli_args = CliArgs { vault, date, relative_date, time, time_format, category: None };
                 self.edit_notes(&cli_args)
             }
         }
@@ -154,6 +155,7 @@ impl App {
             relative_date: cli.relative_date,
             time: cli.time.clone(),
             time_format: cli.time_format.clone(),
+            category: cli.category.clone(),
         };
         
         if cli.list {
@@ -205,11 +207,12 @@ impl App {
             path,
             locale,
             phrases: std::collections::HashMap::new(),
-            section_name: None,
+            section_header: None,
+            section_headers: std::collections::HashMap::new(),
             date_format: None,
             template_file: None,
             file_path_format: None,
-            note_format: None,
+            list_type: None,
         };
 
         // Add to config and save
@@ -277,11 +280,12 @@ impl App {
             path,
             locale,
             phrases: std::collections::HashMap::new(),
-            section_name: None,
+            section_header: None,
+            section_headers: std::collections::HashMap::new(),
             date_format: None,
             template_file: None,
             file_path_format: None,
-            note_format: None,
+            list_type: None,
         };
 
         // Apply Obsidian plugin configurations (excluding journals for now)
@@ -317,8 +321,8 @@ impl App {
         // Print important configuration reminder
         println!();
         println!("⚠️  IMPORTANT: Please review your configuration and add the missing essential information:");
-        println!("   • section_name: The default section name in the daily note where journey will put your notes (e.g., '## Todays notes')");
-        println!("   • note_format: The format for your notes ('bullet' or 'table')");
+        println!("   • section_header: The default section header in the daily note where journey will put your notes (e.g., '## Todays notes')");
+        println!("   • list_type: The format for your notes ('bullet' or 'table')");
         println!("   • file_path_format: template string journey uses to determine the location of the daily note");
         println!("   • It can contain variables like {{year}}, {{month}}, {{day}}, {{weekday}}, {{weekday_short}}, {{month_name}}, {{month_short}}, etc");
         println!("   • The variables are replaced with the actual values when the note is added");
@@ -513,7 +517,7 @@ impl App {
             vault.date_handler.combine_date_time(date, current_time)
         };
 
-        vault.add_note(content, Some(timestamp))?;
+        vault.add_note(content, Some(timestamp), cli.category.as_deref())?;
         println!("Note added successfully!");
         Ok(())
     }
@@ -522,7 +526,7 @@ impl App {
         let vault = self.get_vault(cli.vault.as_deref())?;
         let date = self.parse_date(cli)?;
         
-        let notes = vault.list_notes(date)?;
+        let notes = vault.list_notes(date, cli.category.as_deref())?;
         
         if notes.is_empty() {
             println!("No notes found for {}", vault.date_handler.format_date(date));
@@ -722,8 +726,8 @@ impl App {
             println!("  {}: {}{}", name, vault.path.display(), default_marker);
             
             // Show additional vault information
-            if let Some(section_name) = &vault.section_name {
-                println!("    Section: {}", section_name);
+            if let Some(section_header) = &vault.section_header {
+                println!("    Section: {}", section_header);
             }
             if let Some(template_file) = &vault.template_file {
                 println!("    Template: {}", template_file);

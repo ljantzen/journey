@@ -16,13 +16,14 @@ pub struct VaultConfig {
     pub path: PathBuf,
     pub locale: String,
     pub phrases: HashMap<String, String>,
-    pub section_name: Option<String>,
+    pub section_header: Option<String>,
+    pub section_headers: HashMap<String, String>,
     pub date_format: Option<String>,
     #[serde(deserialize_with = "deserialize_template_file_with_expansion")]
     pub template_file: Option<String>,
     pub file_path_format: Option<String>,
-    // Note format configuration
-    pub note_format: Option<NoteFormat>,
+    // List type configuration
+    pub list_type: Option<NoteFormat>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -158,12 +159,25 @@ impl VaultConfig {
             path: expand_tilde(&path),
             locale,
             phrases: HashMap::new(),
-            section_name: None,
+            section_header: None,
+            section_headers: HashMap::new(),
             date_format: None,
             template_file: None,
             file_path_format: None,
-            note_format: None,
+            list_type: None,
         }
+    }
+
+    /// Get the section header for a category, falling back to default section_header
+    pub fn get_section_header(&self, category: Option<&str>) -> Option<&String> {
+        if let Some(cat) = category {
+            // First try category-specific section header
+            if let Some(section_header) = self.section_headers.get(cat) {
+                return Some(section_header);
+            }
+        }
+        // Fall back to default section_header
+        self.section_header.as_ref()
     }
 
     /// Create a test VaultConfig with minimal required fields
@@ -173,11 +187,12 @@ impl VaultConfig {
             path: std::path::PathBuf::from(path),
             locale: "en-US".to_string(),
             phrases: HashMap::new(),
-            section_name: None,
+            section_header: None,
+            section_headers: HashMap::new(),
             date_format: None,
             template_file: None,
             file_path_format: None,
-            note_format: None,
+            list_type: None,
         }
     }
 }

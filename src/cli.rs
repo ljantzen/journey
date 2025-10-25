@@ -49,6 +49,10 @@ pub struct Cli {
     #[arg(short = 'V', long)]
     pub vault: Option<String>,
 
+    /// Category for section selection (e.g., 'work' uses section_header_work)
+    #[arg(short = 'c', long)]
+    pub category: Option<String>,
+
     /// Show version information
     #[arg(short = 'v', long = "version")]
     pub version: bool,

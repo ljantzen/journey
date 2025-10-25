@@ -31,7 +31,7 @@ impl Vault {
         }
     }
 
-    pub fn add_note(&self, content: &str, timestamp: Option<DateTime<Local>>) -> Result<(), JourneyError> {
+    pub fn add_note(&self, content: &str, timestamp: Option<DateTime<Local>>, category: Option<&str>) -> Result<(), JourneyError> {
         let timestamp = timestamp.unwrap_or_else(|| self.date_handler.get_current_datetime());
         let date = timestamp.date_naive();
         let note_path = self.get_note_path(date);
@@ -46,7 +46,7 @@ impl Vault {
         let formatted_time = self.date_handler.format_datetime(timestamp);
         
         // Get the configured note format (default to bullet if not specified)
-        let note_format = self.config.note_format.as_ref().unwrap_or(&NoteFormat::Bullet);
+        let note_format = self.config.list_type.as_ref().unwrap_or(&NoteFormat::Bullet);
         let note_entry = self.format_note_entry(&formatted_time, &expanded_content, note_format);
 
         // Check if file exists and has content
@@ -56,8 +56,8 @@ impl Vault {
             // Check if we need to convert the existing format
             let converted_content = self.convert_note_format_if_needed(&existing_content, note_format)?;
             
-            // If section_name is specified, find and append to that section
-            if let Some(section_name) = &self.config.section_name {
+            // If section_header is specified, find and append to that section
+            if let Some(section_name) = self.config.get_section_header(category) {
                 if let Some(section_start) = self.find_section(&converted_content, section_name) {
                     let mut lines: Vec<&str> = converted_content.lines().collect();
                     
@@ -96,7 +96,7 @@ impl Vault {
                 self.create_file_from_template(template_file, timestamp, &note_entry)?
             } else {
                 // Use default template
-                self.create_default_file_content(date, &note_entry)
+                self.create_default_file_content(date, &note_entry, category)
             };
             
             fs::write(&note_path, file_content)?;
@@ -105,7 +105,7 @@ impl Vault {
         Ok(())
     }
 
-    fn create_default_file_content(&self, date: NaiveDate, note_entry: &str) -> String {
+    fn create_default_file_content(&self, date: NaiveDate, note_entry: &str, category: Option<&str>) -> String {
         let mut file_content = String::new();
         
         // Add frontmatter
@@ -114,12 +114,12 @@ impl Vault {
         file_content.push_str("---\n\n");
         
         // Add section if specified
-        if let Some(section_name) = &self.config.section_name {
+        if let Some(section_name) = self.config.get_section_header(category) {
             file_content.push_str(&format!("# {}\n\n", section_name));
         }
         
         // Add table header if using table format
-        let note_format = self.config.note_format.as_ref().unwrap_or(&NoteFormat::Bullet);
+        let note_format = self.config.list_type.as_ref().unwrap_or(&NoteFormat::Bullet);
         if note_format == &NoteFormat::Table {
             file_content.push_str("| Time | Content |\n");
             file_content.push_str("|------|----------|\n");
@@ -177,9 +177,9 @@ impl Vault {
         processed_content = processed_content.replace("{{today}}", &today);
         
         // Handle section name replacement
-        if let Some(section_name) = &self.config.section_name {
-            processed_content = processed_content.replace("{{section_name}}", section_name);
-            processed_content = processed_content.replace("{section_name}", section_name);
+        if let Some(section_header) = &self.config.section_header {
+            processed_content = processed_content.replace("{{section_header}}", section_header);
+            processed_content = processed_content.replace("{section_header}", section_header);
         }
         
         // If the template doesn't contain a placeholder for notes, append the note
@@ -214,7 +214,7 @@ impl Vault {
         lines.len()
     }
 
-    pub fn list_notes(&self, date: NaiveDate) -> Result<Vec<String>, JourneyError> {
+    pub fn list_notes(&self, date: NaiveDate, category: Option<&str>) -> Result<Vec<String>, JourneyError> {
         let note_path = self.get_note_path(date);
         
         if !note_path.exists() {
@@ -225,8 +225,8 @@ impl Vault {
         let lines: Vec<&str> = content.lines().collect();
         let mut notes = Vec::new();
         
-        // If section_name is configured, only list notes within that section
-        if let Some(section_name) = &self.config.section_name {
+        // If section_header is configured, only list notes within that section
+        if let Some(section_name) = self.config.get_section_header(category) {
             if let Some(section_start) = self.find_section(&content, section_name) {
                 let section_end = self.find_section_end(&lines, section_start);
                 

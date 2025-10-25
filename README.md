@@ -379,8 +379,24 @@ journey --date 2025-10-22 --edit
 
 Journey supports organizing notes into specific sections within your daily markdown files. This is useful for categorizing different types of notes (e.g., work vs personal, different projects, etc.).
 
-#### Configuration
-Set the `section_name` in your vault configuration:
+#### Category Support
+
+Journey supports category-specific sections using the `-c/--category` flag. This allows you to use different section headers for different types of notes:
+
+```bash
+# Add a work note to the "Work Notes" section
+journey -c work "Completed the quarterly report"
+
+# Add a personal note to the "Personal Notes" section  
+journey -c personal "Had dinner with friends"
+
+# Add a health note to the "Health & Fitness" section
+journey -c health "30 minutes of cardio"
+```
+
+#### Category Configuration
+
+Configure category-specific section headers in your vault configuration:
 
 ```yaml
 vaults:
@@ -388,13 +404,32 @@ vaults:
     name: work
     path: ~/Documents/work-journal
     locale: en_US.UTF-8
-    section_name: "Daily Standup"  # Notes will be added to this section
+    section_header: "Daily Standup"  # Default section
+    section_headers:  # Category-specific sections
+      work: "Work Notes"
+      personal: "Personal Notes"
+      health: "Health & Fitness"
+      meetings: "Meeting Notes"
+    phrases: {}
+    date_format: null
+```
+
+#### Configuration
+Set the `section_header` in your vault configuration:
+
+```yaml
+vaults:
+  work:
+    name: work
+    path: ~/Documents/work-journal
+    locale: en_US.UTF-8
+    section_header: "Daily Standup"  # Notes will be added to this section
     phrases: {}
     date_format: null
 ```
 
 #### How It Works
-- When `section_name` is configured, new notes are automatically added to that section
+- When `section_header` is configured, new notes are automatically added to that section
 - If the section doesn't exist, it will be created at the end of the file
 - If the section exists, notes are added at the end of that section
 - Other sections and content in the file are preserved
@@ -475,7 +510,7 @@ Templates support the following variables that are automatically replaced:
 - `{{Weekday}}` / `{Weekday}` - Abbreviated weekday name (Mon, Tue, etc.)
 
 **Other Variables:**
-- `{{section_name}}` / `{section_name}` - The configured section name (if any)
+- `{{section_header}}` / `{section_header}` - The configured section header (if any)
 - `{{note}}` / `{note}` - The note content (optional placeholder)
 
 **Note**: Both single `{variable}` and double `{{variable}}` brace formats are supported for compatibility.
@@ -527,7 +562,9 @@ vaults:
     path: /home/user/journal
     locale: en_US.UTF-8
     phrases: {}
-    section_name: null
+    section_header: null
+    section_headers: {}
+    list_type: null
 ```
 
 ### Path Expansion
@@ -544,7 +581,9 @@ vaults:
     path: ~/Documents/journal  # Expands to /home/username/Documents/journal
     locale: en_US.UTF-8
     phrases: {}
-    section_name: null
+    section_header: null
+    section_headers: {}
+    list_type: null
 ```
 
 #### Windows Environment Variables
@@ -557,7 +596,9 @@ vaults:
     path: "%USERPROFILE%/Documents/journal"  # Expands to C:\Users\username\Documents\journal
     locale: en_US.UTF-8
     phrases: {}
-    section_name: null
+    section_header: null
+    section_headers: {}
+    list_type: null
 ```
 
 **Supported Windows Environment Variables:**
@@ -602,7 +643,9 @@ vaults:
       "@lunch": "Had lunch at the usual place"
       "@code": "Coding session on main project"
       "@review": "Code review completed"
-    section_name: "Daily Standup"
+    section_header: "Daily Standup"
+    section_headers: {}
+    list_type: null
 ```
 
 When you add a note containing a phrase key, it gets automatically replaced with the corresponding value:
@@ -694,6 +737,43 @@ vaults:
 **Default Behavior:**
 If no `file_path_format` is specified, notes are stored as `YYYY-MM-DD.md` in the vault root directory.
 
+### List Type Configuration
+
+Journey supports different formats for displaying notes when listing them. Configure the `list_type` in your vault configuration:
+
+```yaml
+vaults:
+  work:
+    name: work
+    path: /home/user/work-journal
+    locale: en_US.UTF-8
+    list_type: "bullet"  # or "table"
+    section_header: "Daily Standup"
+    section_headers: {}
+```
+
+**Supported List Types:**
+- `bullet` - Notes displayed as bullet points (default)
+- `table` - Notes displayed in a table format with Time and Content columns
+
+**Example Output:**
+
+**Bullet Format:**
+```markdown
+- [09:00] Morning standup meeting
+- [10:30] Code review completed
+- [14:00] Project planning session
+```
+
+**Table Format:**
+```markdown
+| Time | Content |
+|------|----------|
+| 09:00 | Morning standup meeting |
+| 10:30 | Code review completed |
+| 14:00 | Project planning session |
+```
+
 
 ## Options
 
@@ -701,6 +781,7 @@ If no `file_path_format` is specified, notes are stored as `YYYY-MM-DD.md` in th
 - `-r, --relative-date <DAYS>`: Days offset (positive = past, negative = future, 0 = today)
 - `-t, --time <TIME>`: Specify time in HH:MM or HH:MM:SS format
 - `--time-format <FORMAT>`: Override time format (12h|24h)
+- `-c, --category <CATEGORY>`: Specify category for section selection (e.g., 'work' uses section_header_work)
 - `--stdin`: Read input from stdin (each line becomes a separate note)
 - `-V, --vault <NAME>`: Specify vault name
 - `-v, --version`: Show version information
@@ -777,6 +858,11 @@ journey --edit
 
 # Add a note with specific time (no quotes needed)
 journey --time 09:30 "Early morning meeting notes"
+
+# Add notes to different categories
+journey -c work "Completed quarterly report"
+journey -c personal "Had dinner with friends"
+journey -c health "30 minutes of cardio"
 ```
 
 ## Time Format Override
