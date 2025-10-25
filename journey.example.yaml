@@ -14,6 +14,7 @@ vaults:
       "@gym": "Gym session completed"
     section_name: null
     date_format: null  # Optional: YYYY-MM-DD, MM/DD/YYYY, DD.MM.YYYY, etc.
+    note_format: bullet  # Optional: bullet (default) or table
 
   # Example vault with date format override, section, template, and custom file path
   work:
@@ -66,6 +67,10 @@ vaults:
 #   Zero-padding: {month:02}, {date:02}, {day:02}
 #   Weekday formats: {Weekday} (Friday), {weekday} (friday), {Weekday_short} (Fri), {weekday_short} (fri)
 #   Month formats: {Month} (October), {month_name} (october), {Month_short} (Oct), {month_short} (oct)
+# - note_format: Optional note format (bullet or table, default = bullet)
+#   bullet: Notes are formatted as bulleted lists (- [timestamp] content)
+#   table: Notes are formatted as markdown tables (| timestamp | content |)
+#   When changing formats, existing notes are automatically converted to the new format
 #
 # Supported date formats:
 # - YYYY-MM-DD (ISO format)

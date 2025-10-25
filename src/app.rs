@@ -219,6 +219,7 @@ impl App {
             monthly_format: None,
             quarterly_format: None,
             yearly_format: None,
+            note_format: None,
         };
 
         // Add to config and save
@@ -294,6 +295,7 @@ impl App {
             monthly_format: None,
             quarterly_format: None,
             yearly_format: None,
+            note_format: None,
         };
 
         // Apply Obsidian plugin configurations (excluding journals for now)

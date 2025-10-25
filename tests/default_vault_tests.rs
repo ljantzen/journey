@@ -17,6 +17,11 @@ fn test_set_default_vault() {
         date_format: None,
         template_file: None,
         file_path_format: None,
+        weekly_format: None,
+        monthly_format: None,
+        quarterly_format: None,
+        yearly_format: None,
+        note_format: None,
     };
     
     let vault2 = VaultConfig {
@@ -28,6 +33,11 @@ fn test_set_default_vault() {
         date_format: None,
         template_file: None,
         file_path_format: None,
+        weekly_format: None,
+        monthly_format: None,
+        quarterly_format: None,
+        yearly_format: None,
+        note_format: None,
     };
     
     config.add_vault(vault1);
@@ -62,6 +72,11 @@ fn test_get_default_vault() {
         date_format: None,
         template_file: None,
         file_path_format: None,
+        weekly_format: None,
+        monthly_format: None,
+        quarterly_format: None,
+        yearly_format: None,
+        note_format: None,
     };
     
     config.add_vault(vault);
@@ -91,6 +106,11 @@ fn test_clear_default_vault() {
         date_format: None,
         template_file: None,
         file_path_format: None,
+        weekly_format: None,
+        monthly_format: None,
+        quarterly_format: None,
+        yearly_format: None,
+        note_format: None,
     };
     
     config.add_vault(vault);
@@ -119,6 +139,11 @@ fn test_default_vault_fallback() {
         date_format: None,
         template_file: None,
         file_path_format: None,
+        weekly_format: None,
+        monthly_format: None,
+        quarterly_format: None,
+        yearly_format: None,
+        note_format: None,
     };
     
     config.add_vault(vault);

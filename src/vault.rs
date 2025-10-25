@@ -1,4 +1,4 @@
-use crate::config::VaultConfig;
+use crate::config::{VaultConfig, NoteFormat};
 use crate::date_time::DateTimeHandler;
 use crate::errors::JourneyError;
 use chrono::{DateTime, Local, NaiveDate, Datelike, Weekday};
@@ -44,16 +44,22 @@ impl Vault {
         // Expand phrases in the content
         let expanded_content = self.expand_phrases(content);
         let formatted_time = self.date_handler.format_datetime(timestamp);
-        let note_entry = format!("- [{}] {}\n", formatted_time, expanded_content);
+        
+        // Get the configured note format (default to bullet if not specified)
+        let note_format = self.config.note_format.as_ref().unwrap_or(&NoteFormat::Bullet);
+        let note_entry = self.format_note_entry(&formatted_time, &expanded_content, note_format);
 
         // Check if file exists and has content
         if note_path.exists() {
             let existing_content = fs::read_to_string(&note_path)?;
             
+            // Check if we need to convert the existing format
+            let converted_content = self.convert_note_format_if_needed(&existing_content, note_format)?;
+            
             // If section_name is specified, find and append to that section
             if let Some(section_name) = &self.config.section_name {
-                if let Some(section_start) = self.find_section(&existing_content, section_name) {
-                    let mut lines: Vec<&str> = existing_content.lines().collect();
+                if let Some(section_start) = self.find_section(&converted_content, section_name) {
+                    let mut lines: Vec<&str> = converted_content.lines().collect();
                     
                     // Find the end of the section (next section or end of file)
                     let section_end = self.find_section_end(&lines, section_start);
@@ -65,7 +71,7 @@ impl Vault {
                     return Ok(());
                 } else {
                     // Section doesn't exist, create it at the end
-                    let mut new_content = existing_content;
+                    let mut new_content = converted_content;
                     if !new_content.ends_with('\n') {
                         new_content.push('\n');
                     }
@@ -77,7 +83,7 @@ impl Vault {
             }
             
             // Append to end of file
-            let mut content = existing_content;
+            let mut content = converted_content;
             if !content.ends_with('\n') {
                 content.push('\n');
             }
@@ -110,6 +116,13 @@ impl Vault {
         // Add section if specified
         if let Some(section_name) = &self.config.section_name {
             file_content.push_str(&format!("# {}\n\n", section_name));
+        }
+        
+        // Add table header if using table format
+        let note_format = self.config.note_format.as_ref().unwrap_or(&NoteFormat::Bullet);
+        if note_format == &NoteFormat::Table {
+            file_content.push_str("| Time | Content |\n");
+            file_content.push_str("|------|----------|\n");
         }
         
         file_content.push_str(note_entry);
@@ -212,8 +225,17 @@ impl Vault {
         let mut notes = Vec::new();
         
         for line in content.lines() {
-            if line.trim().starts_with("- [") {
+            let trimmed = line.trim();
+            // Check for bullet format
+            if trimmed.starts_with("- [") {
                 notes.push(line.to_string());
+            }
+            // Check for table format (but not table headers or separators)
+            else if trimmed.starts_with("|") && !trimmed.starts_with("|---") && trimmed.contains("|") {
+                // Skip if it looks like a table header
+                if !trimmed.contains("Time") && !trimmed.contains("Content") && !trimmed.contains("Note") {
+                    notes.push(line.to_string());
+                }
             }
         }
 
@@ -317,6 +339,108 @@ impl Vault {
             12 => if short { "Dec".to_string() } else { "December".to_string() },
             _ => "Unknown".to_string(),
         }
+    }
+
+    /// Format a note entry according to the specified format
+    fn format_note_entry(&self, timestamp: &str, content: &str, format: &NoteFormat) -> String {
+        match format {
+            NoteFormat::Bullet => format!("- [{}] {}\n", timestamp, content),
+            NoteFormat::Table => format!("| {} | {} |\n", timestamp, content),
+        }
+    }
+
+    /// Detect the current note format in the content
+    pub fn detect_note_format(&self, content: &str) -> Option<NoteFormat> {
+        let lines: Vec<&str> = content.lines().collect();
+        
+        // Look for bullet format
+        let has_bullet_notes = lines.iter().any(|line| line.trim().starts_with("- ["));
+        
+        // Look for table format
+        let has_table_notes = lines.iter().any(|line| {
+            let trimmed = line.trim();
+            trimmed.starts_with("|") && trimmed.contains("|") && !trimmed.starts_with("|---")
+        });
+        
+        if has_bullet_notes && !has_table_notes {
+            Some(NoteFormat::Bullet)
+        } else if has_table_notes && !has_bullet_notes {
+            Some(NoteFormat::Table)
+        } else {
+            None // Mixed or no notes found
+        }
+    }
+
+    /// Convert note format if needed
+    fn convert_note_format_if_needed(&self, content: &str, target_format: &NoteFormat) -> Result<String, JourneyError> {
+        let current_format = self.detect_note_format(content);
+        
+        // If no format detected or already matches target, return as-is
+        if current_format.is_none() || current_format.as_ref() == Some(target_format) {
+            return Ok(content.to_string());
+        }
+        
+        let lines: Vec<&str> = content.lines().collect();
+        let mut converted_lines = Vec::new();
+        let mut first_note_found = false;
+        
+        for line in lines {
+            let trimmed = line.trim();
+            
+            // Convert bullet to table
+            if target_format == &NoteFormat::Table && trimmed.starts_with("- [") {
+                // Add table header before the first note
+                if !first_note_found {
+                    converted_lines.push("| Time | Content |".to_string());
+                    converted_lines.push("|------|----------|".to_string());
+                    first_note_found = true;
+                }
+                
+                if let Some((timestamp, note_content)) = self.parse_bullet_note(trimmed) {
+                    converted_lines.push(format!("| {} | {} |", timestamp, note_content));
+                } else {
+                    converted_lines.push(line.to_string());
+                }
+            }
+            // Convert table to bullet
+            else if target_format == &NoteFormat::Bullet && trimmed.starts_with("|") && !trimmed.starts_with("|---") {
+                if let Some((timestamp, note_content)) = self.parse_table_note(trimmed) {
+                    converted_lines.push(format!("- [{}] {}", timestamp, note_content));
+                } else {
+                    converted_lines.push(line.to_string());
+                }
+            }
+            else {
+                converted_lines.push(line.to_string());
+            }
+        }
+        
+        Ok(converted_lines.join("\n"))
+    }
+
+    /// Parse a bullet note to extract timestamp and content
+    fn parse_bullet_note(&self, line: &str) -> Option<(String, String)> {
+        // Format: "- [timestamp] content"
+        if let Some(start) = line.find("- [") {
+            if let Some(end) = line[start + 3..].find("]") {
+                let timestamp = line[start + 3..start + 3 + end].to_string();
+                let content = line[start + 3 + end + 1..].trim().to_string();
+                return Some((timestamp, content));
+            }
+        }
+        None
+    }
+
+    /// Parse a table note to extract timestamp and content
+    fn parse_table_note(&self, line: &str) -> Option<(String, String)> {
+        // Format: "| timestamp | content |"
+        let parts: Vec<&str> = line.split('|').collect();
+        if parts.len() >= 3 {
+            let timestamp = parts[1].trim().to_string();
+            let content = parts[2].trim().to_string();
+            return Some((timestamp, content));
+        }
+        None
     }
 }
 

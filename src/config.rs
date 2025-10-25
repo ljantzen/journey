@@ -26,6 +26,22 @@ pub struct VaultConfig {
     pub monthly_format: Option<String>,
     pub quarterly_format: Option<String>,
     pub yearly_format: Option<String>,
+    // Note format configuration
+    pub note_format: Option<NoteFormat>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum NoteFormat {
+    #[serde(rename = "bullet")]
+    Bullet,
+    #[serde(rename = "table")]
+    Table,
+}
+
+impl Default for NoteFormat {
+    fn default() -> Self {
+        NoteFormat::Bullet
+    }
 }
 
 /// Custom deserializer for PathBuf that expands tildes
@@ -155,6 +171,7 @@ impl VaultConfig {
             monthly_format: None,
             quarterly_format: None,
             yearly_format: None,
+            note_format: None,
         }
     }
 
@@ -173,6 +190,7 @@ impl VaultConfig {
             monthly_format: None,
             quarterly_format: None,
             yearly_format: None,
+            note_format: None,
         }
     }
 }

@@ -41,6 +41,11 @@ updated: {created}
         date_format: None,
         template_file: Some(template_path.to_string_lossy().to_string()),
         file_path_format: None,
+        weekly_format: None,
+        monthly_format: None,
+        quarterly_format: None,
+        yearly_format: None,
+        note_format: None,
     };
     
     let vault = Vault::new(config);
@@ -92,6 +97,11 @@ fn test_weekday_variations() {
         date_format: None,
         template_file: Some(template_path.to_string_lossy().to_string()),
         file_path_format: None,
+        weekly_format: None,
+        monthly_format: None,
+        quarterly_format: None,
+        yearly_format: None,
+        note_format: None,
     };
     
     let vault = Vault::new(config);
