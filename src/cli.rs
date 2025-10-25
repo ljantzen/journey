@@ -1,5 +1,4 @@
 use clap::{Parser, Subcommand};
-use std::path::PathBuf;
 
 fn parse_relative_date(s: &str) -> Result<i64, String> {
     s.parse::<i64>().map_err(|_| format!("Invalid relative date: {}", s))
@@ -61,20 +60,6 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Initialize a new vault
-    Init {
-        /// Path to the vault directory
-        #[arg(short, long)]
-        path: PathBuf,
-        
-        /// Name of the vault (defaults to path basename if not provided)
-        #[arg(short, long)]
-        name: Option<String>,
-        
-        /// Type of vault (table|bullet)
-        #[arg(short, long)]
-        vault_type: Option<String>,
-    },
     /// Add a note
     Add {
         /// The note content
@@ -84,14 +69,5 @@ pub enum Commands {
     List,
     /// Edit notes
     Edit,
-    /// Set the default vault
-    SetDefault {
-        /// Name of the vault to set as default
-        vault_name: String,
-    },
-    /// Clear the default vault
-    ClearDefault,
-    /// Show current default vault
-    ShowDefault,
 }
 

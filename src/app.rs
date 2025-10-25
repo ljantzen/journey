@@ -65,11 +65,35 @@ impl App {
         }
     }
 
-    fn handle_command_with_args(&mut self, cmd: crate::cli::Commands, vault: Option<String>, date: Option<String>, relative_date: Option<i64>, time: Option<String>, time_format: Option<String>) -> Result<(), JourneyError> {
-        match cmd {
-            crate::cli::Commands::Init { path, name, vault_type: _ } => {
+    pub fn run_journeyctl(&mut self, cli: crate::journeyctl::JourneyCtlCli) -> Result<(), JourneyError> {
+        match cli.command {
+            Some(cmd) => self.run_journeyctl_command(cmd),
+            None => Err(JourneyError::Config("No command provided".to_string()))
+        }
+    }
+
+    pub fn run_journeyctl_command(&mut self, command: crate::journeyctl::Commands) -> Result<(), JourneyError> {
+        match command {
+            crate::journeyctl::Commands::Init { path, name, vault_type: _ } => {
                 self.init_vault(path, name)
             }
+            crate::journeyctl::Commands::List => {
+                self.list_vaults()
+            }
+            crate::journeyctl::Commands::SetDefault { vault_name } => {
+                self.set_default_vault(&vault_name)
+            }
+            crate::journeyctl::Commands::UnsetDefault => {
+                self.unset_default_vault()
+            }
+            crate::journeyctl::Commands::ShowDefault => {
+                self.show_default_vault()
+            }
+        }
+    }
+
+    fn handle_command_with_args(&mut self, cmd: crate::cli::Commands, vault: Option<String>, date: Option<String>, relative_date: Option<i64>, time: Option<String>, time_format: Option<String>) -> Result<(), JourneyError> {
+        match cmd {
             crate::cli::Commands::Add { content } => {
                 let cli_args = CliArgs { vault, date, relative_date, time, time_format };
                 self.add_note(&content, &cli_args)
@@ -81,15 +105,6 @@ impl App {
             crate::cli::Commands::Edit => {
                 let cli_args = CliArgs { vault, date, relative_date, time, time_format };
                 self.edit_notes(&cli_args)
-            }
-            crate::cli::Commands::SetDefault { vault_name } => {
-                self.set_default_vault(&vault_name)
-            }
-            crate::cli::Commands::ClearDefault => {
-                self.clear_default_vault()
-            }
-            crate::cli::Commands::ShowDefault => {
-                self.show_default_vault()
             }
         }
     }
@@ -315,10 +330,10 @@ impl App {
         }
     }
 
-    fn clear_default_vault(&mut self) -> Result<(), JourneyError> {
-        self.config.clear_default_vault();
+    fn unset_default_vault(&mut self) -> Result<(), JourneyError> {
+        self.config.unset_default_vault();
         self.config_manager.save_config(&self.config)?;
-        println!("Default vault cleared");
+        println!("Default vault unset");
         Ok(())
     }
 
@@ -336,6 +351,47 @@ impl App {
                     self.config.vaults.keys().map(|s| s.as_str()).collect::<Vec<_>>().join(", "));
             }
         }
+        Ok(())
+    }
+
+    fn list_vaults(&self) -> Result<(), JourneyError> {
+        if self.config.vaults.is_empty() {
+            println!("No vaults configured.");
+            println!("Use 'journeyctl init --path <path> --name <name>' to create your first vault.");
+            return Ok(());
+        }
+
+        println!("Configured vaults:");
+        println!();
+
+        for (name, vault) in &self.config.vaults {
+            let is_default = self.config.default_vault.as_ref() == Some(name);
+            let default_marker = if is_default { " (default)" } else { "" };
+            
+            println!("  {}: {}{}", name, vault.path.display(), default_marker);
+            
+            // Show additional vault information
+            if let Some(section_name) = &vault.section_name {
+                println!("    Section: {}", section_name);
+            }
+            if let Some(template_file) = &vault.template_file {
+                println!("    Template: {}", template_file);
+            }
+            if let Some(file_path_format) = &vault.file_path_format {
+                println!("    Path format: {}", file_path_format);
+            }
+            if !vault.phrases.is_empty() {
+                println!("    Phrases: {} configured", vault.phrases.len());
+            }
+            println!();
+        }
+
+        if let Some(default_name) = &self.config.default_vault {
+            println!("Default vault: {}", default_name);
+        } else {
+            println!("No default vault set");
+        }
+
         Ok(())
     }
 }

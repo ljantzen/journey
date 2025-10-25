@@ -10,6 +10,7 @@ Journey is a command-line journal application written in Rust that allows you to
 - **Markdown Storage**: Notes are stored as markdown files with frontmatter
 - **Cross-platform**: Works on Linux, macOS, and Windows
 - **Configuration**: YAML-based configuration stored in platform-appropriate locations
+- **Dual Binary Architecture**: Separate `journey` and `journeyctl` commands for different operations
 
 # License 
 
@@ -34,16 +35,45 @@ cargo install --path .
 
 Or download binaries directly from the [github releases page](https://github.com/ljantzen/journey/releases).
 
+## Binary Architecture
+
+Journey uses a dual binary architecture for better separation of concerns:
+
+- **`journey`**: Main journal application for note operations (add, list, edit)
+- **`journeyctl`**: Vault management tool for administrative operations (init, default vault management)
+
+This separation allows for:
+- Cleaner command interfaces
+- Better organization of functionality
+- Easier maintenance and development
+
+### Quick Command Reference
+
+**Journey (Note Operations):**
+```bash
+journey "My note"                    # Add note
+journey --list                       # List notes
+journey --edit                       # Edit notes
+```
+
+**Journeyctl (Vault Management):**
+```bash
+journeyctl init --path ~/journal     # Initialize vault
+journeyctl list                      # List all vaults
+journeyctl set-default vault-name    # Set default vault
+journeyctl show-default              # Show current default
+journeyctl unset-default             # Remove default vault
+```
 
 ## Quick Start
 
 1. **Initialize a vault**:
    ```bash
    # Unix/Linux/macOS
-   journey init --path ~/my-journal --name personal
+   journeyctl init --path ~/my-journal --name personal
    
    # Windows
-   journey init --path "%USERPROFILE%\my-journal" --name personal
+   journeyctl init --path "%USERPROFILE%\my-journal" --name personal
    ```
 
 2. **Add a note**:
@@ -83,22 +113,25 @@ This provides a quick way to see your notes without needing to remember flags.
 ### Initialize a Vault
 
 ```bash
-journey init --path /path/to/vault --name vault-name
+journeyctl init --path /path/to/vault --name vault-name
 ```
 
-### Default Vault Management
+### Vault Management
 
-When you have multiple vaults, you can set one as the default to avoid specifying `--vault` every time:
+Journey provides comprehensive vault management through `journeyctl`:
 
 ```bash
+# List all configured vaults
+journeyctl list
+
 # Set a default vault
-journey set-default vault-name
+journeyctl set-default vault-name
 
 # Show current default vault
-journey show-default
+journeyctl show-default
 
-# Clear the default vault
-journey clear-default
+# Unset the default vault
+journeyctl unset-default
 ```
 
 **Benefits:**
@@ -544,10 +577,10 @@ The `--relative-date` flag uses intuitive numbering:
 
 ```bash
 # Create a vault (Unix/Linux/macOS)
-journey init --path ~/journal --name daily
+journeyctl init --path ~/journal --name daily
 
 # Create a vault (Windows)
-journey init --path "%USERPROFILE%\journal" --name daily
+journeyctl init --path "%USERPROFILE%\journal" --name daily
 
 # Add notes throughout the day (no quotes needed)
 journey Morning coffee and planning

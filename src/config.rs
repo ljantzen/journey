@@ -184,5 +184,9 @@ impl Config {
     pub fn clear_default_vault(&mut self) {
         self.default_vault = None;
     }
+
+    pub fn unset_default_vault(&mut self) {
+        self.default_vault = None;
+    }
 }
 

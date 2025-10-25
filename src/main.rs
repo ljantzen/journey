@@ -11,12 +11,8 @@ fn main() {
         return;
     }
     
-    // Check if this is an init command - if so, use special initialization
-    let app_result = if matches!(cli.command, Some(journey::cli::Commands::Init { .. })) {
-        App::new_for_init()
-    } else {
-        App::new()
-    };
+    // Initialize the app normally since init is now handled by journeyctl
+    let app_result = App::new();
     
     match app_result {
         Ok(mut app) => {
