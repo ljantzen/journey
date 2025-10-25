@@ -53,6 +53,10 @@ pub struct Cli {
     #[arg(short = 'c', long)]
     pub category: Option<String>,
 
+    /// Include table headers when listing notes in table format
+    #[arg(long)]
+    pub header: bool,
+
     /// Show version information
     #[arg(short = 'v', long = "version")]
     pub version: bool,

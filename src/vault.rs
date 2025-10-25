@@ -19,6 +19,73 @@ impl Vault {
         }
     }
 
+    /// Get locale-dependent table headers
+    pub fn get_table_headers(&self) -> (String, String) {
+        // Check for custom table headers first
+        if let Some(ref custom_headers) = self.config.table_headers {
+            return (custom_headers.time.clone(), custom_headers.content.clone());
+        }
+        
+        let locale = &self.config.locale;
+        
+        // Check for Norwegian locale
+        if locale.starts_with("no_") || locale.starts_with("nb_") || locale.starts_with("nn_") {
+            ("Tid".to_string(), "Innhold".to_string())
+        }
+        // Check for Swedish locale
+        else if locale.starts_with("sv_") {
+            ("Tid".to_string(), "Innehåll".to_string())
+        }
+        // Check for Danish locale
+        else if locale.starts_with("da_") {
+            ("Tid".to_string(), "Indhold".to_string())
+        }
+        // Check for Finnish locale
+        else if locale.starts_with("fi_") {
+            ("Aika".to_string(), "Sisältö".to_string())
+        }
+        // Check for German locale
+        else if locale.starts_with("de_") {
+            ("Zeit".to_string(), "Inhalt".to_string())
+        }
+        // Check for French locale
+        else if locale.starts_with("fr_") {
+            ("Heure".to_string(), "Contenu".to_string())
+        }
+        // Check for Spanish locale
+        else if locale.starts_with("es_") {
+            ("Hora".to_string(), "Contenido".to_string())
+        }
+        // Check for Italian locale
+        else if locale.starts_with("it_") {
+            ("Ora".to_string(), "Contenuto".to_string())
+        }
+        // Check for Dutch locale
+        else if locale.starts_with("nl_") {
+            ("Tijd".to_string(), "Inhoud".to_string())
+        }
+        // Check for Portuguese locale
+        else if locale.starts_with("pt_") {
+            ("Hora".to_string(), "Conteúdo".to_string())
+        }
+        // Check for Russian locale
+        else if locale.starts_with("ru_") {
+            ("Время".to_string(), "Содержание".to_string())
+        }
+        // Check for Japanese locale
+        else if locale.starts_with("ja_") {
+            ("時間".to_string(), "内容".to_string())
+        }
+        // Check for Chinese locale
+        else if locale.starts_with("zh_") {
+            ("时间".to_string(), "内容".to_string())
+        }
+        // Default to English
+        else {
+            ("Time".to_string(), "Content".to_string())
+        }
+    }
+
     pub fn get_note_path(&self, date: NaiveDate) -> PathBuf {
         if let Some(ref format) = self.config.file_path_format {
             // Use custom file path format
@@ -61,11 +128,11 @@ impl Vault {
                 if let Some(section_start) = self.find_section(&converted_content, section_name) {
                     let mut lines: Vec<&str> = converted_content.lines().collect();
                     
-                    // Find the end of the section (next section or end of file)
-                    let section_end = self.find_section_end(&lines, section_start);
+                    // Find the actual end of content in the section
+                    let content_end = self.find_section_content_end(&lines, section_start);
                     
-                    // Insert the note at the end of the section
-                    lines.insert(section_end, &note_entry);
+                    // Insert the note at the end of the content in the section
+                    lines.insert(content_end, &note_entry);
                     
                     fs::write(&note_path, lines.join("\n"))?;
                     return Ok(());
@@ -75,7 +142,7 @@ impl Vault {
                     if !new_content.ends_with('\n') {
                         new_content.push('\n');
                     }
-                    new_content.push_str(&format!("\n# {}\n\n", section_name));
+                    new_content.push_str(&format!("\n# {}\n", section_name));
                     new_content.push_str(&note_entry);
                     fs::write(&note_path, new_content)?;
                     return Ok(());
@@ -84,9 +151,7 @@ impl Vault {
             
             // Append to end of file
             let mut content = converted_content;
-            if !content.ends_with('\n') {
-                content.push('\n');
-            }
+            // note_entry already includes a newline, so we don't add an extra one
             content.push_str(&note_entry);
             fs::write(&note_path, content)?;
         } else {
@@ -121,7 +186,8 @@ impl Vault {
         // Add table header if using table format
         let note_format = self.config.list_type.as_ref().unwrap_or(&NoteFormat::Bullet);
         if note_format == &NoteFormat::Table {
-            file_content.push_str("| Time | Content |\n");
+            let (time_header, content_header) = self.get_table_headers();
+            file_content.push_str(&format!("| {} | {} |\n", time_header, content_header));
             file_content.push_str("|------|----------|\n");
         }
         
@@ -214,6 +280,20 @@ impl Vault {
         lines.len()
     }
 
+    pub fn find_section_content_end(&self, lines: &[&str], section_start: usize) -> usize {
+        let section_end = self.find_section_end(lines, section_start);
+        
+        // Find the actual end of content in the section (skip blank lines at the end)
+        let mut content_end = section_start + 1;
+        for i in section_start + 1..section_end {
+            if !lines[i].trim().is_empty() {
+                content_end = i + 1;
+            }
+        }
+        
+        content_end
+    }
+
     pub fn list_notes(&self, date: NaiveDate, category: Option<&str>) -> Result<Vec<String>, JourneyError> {
         let note_path = self.get_note_path(date);
         
@@ -234,13 +314,14 @@ impl Vault {
                 for line in &lines[section_start..section_end] {
                     let trimmed = line.trim();
                     // Check for bullet format
-                    if trimmed.starts_with("- [") {
+                    if trimmed.starts_with("- ") {
                         notes.push(line.to_string());
                     }
                     // Check for table format (but not table headers or separators)
                     else if trimmed.starts_with("|") && !trimmed.starts_with("|---") && trimmed.contains("|") {
                         // Skip if it looks like a table header
-                        if !trimmed.contains("Time") && !trimmed.contains("Content") && !trimmed.contains("Note") {
+                        let (time_header, content_header) = self.get_table_headers();
+                        if !trimmed.contains(&time_header) && !trimmed.contains(&content_header) && !trimmed.contains("Note") {
                             notes.push(line.to_string());
                         }
                     }
@@ -252,13 +333,14 @@ impl Vault {
             for line in &lines {
                 let trimmed = line.trim();
                 // Check for bullet format
-                if trimmed.starts_with("- [") {
+                if trimmed.starts_with("- ") {
                     notes.push(line.to_string());
                 }
                 // Check for table format (but not table headers or separators)
                 else if trimmed.starts_with("|") && !trimmed.starts_with("|---") && trimmed.contains("|") {
                     // Skip if it looks like a table header
-                    if !trimmed.contains("Time") && !trimmed.contains("Content") && !trimmed.contains("Note") {
+                    let (time_header, content_header) = self.get_table_headers();
+                    if !trimmed.contains(&time_header) && !trimmed.contains(&content_header) && !trimmed.contains("Note") {
                         notes.push(line.to_string());
                     }
                 }
@@ -370,7 +452,7 @@ impl Vault {
     /// Format a note entry according to the specified format
     fn format_note_entry(&self, timestamp: &str, content: &str, format: &NoteFormat) -> String {
         match format {
-            NoteFormat::Bullet => format!("- [{}] {}\n", timestamp, content),
+            NoteFormat::Bullet => format!("- {} {}\n", timestamp, content),
             NoteFormat::Table => format!("| {} | {} |\n", timestamp, content),
         }
     }
@@ -380,7 +462,7 @@ impl Vault {
         let lines: Vec<&str> = content.lines().collect();
         
         // Look for bullet format
-        let has_bullet_notes = lines.iter().any(|line| line.trim().starts_with("- ["));
+        let has_bullet_notes = lines.iter().any(|line| line.trim().starts_with("- "));
         
         // Look for table format
         let has_table_notes = lines.iter().any(|line| {
@@ -401,8 +483,11 @@ impl Vault {
     fn convert_note_format_if_needed(&self, content: &str, target_format: &NoteFormat) -> Result<String, JourneyError> {
         let current_format = self.detect_note_format(content);
         
-        // If no format detected or already matches target, return as-is
+        // If no format detected or already matches target, clean up blank lines if it's table format
         if current_format.is_none() || current_format.as_ref() == Some(target_format) {
+            if target_format == &NoteFormat::Table {
+                return Ok(self.clean_table_blank_lines(content));
+            }
             return Ok(content.to_string());
         }
         
@@ -414,10 +499,11 @@ impl Vault {
             let trimmed = line.trim();
             
             // Convert bullet to table
-            if target_format == &NoteFormat::Table && trimmed.starts_with("- [") {
+            if target_format == &NoteFormat::Table && trimmed.starts_with("- ") {
                 // Add table header before the first note
                 if !first_note_found {
-                    converted_lines.push("| Time | Content |".to_string());
+                    let (time_header, content_header) = self.get_table_headers();
+                    converted_lines.push(format!("| {} | {} |", time_header, content_header));
                     converted_lines.push("|------|----------|".to_string());
                     first_note_found = true;
                 }
@@ -428,13 +514,28 @@ impl Vault {
                     converted_lines.push(line.to_string());
                 }
             }
+            // Skip blank lines when converting bullet to table
+            else if target_format == &NoteFormat::Table && trimmed.is_empty() && first_note_found {
+                // Skip blank lines between bullet points when converting to table
+                continue;
+            }
             // Convert table to bullet
-            else if target_format == &NoteFormat::Bullet && trimmed.starts_with("|") && !trimmed.starts_with("|---") {
+            else if target_format == &NoteFormat::Bullet && trimmed.starts_with("|") && !trimmed.starts_with("|---") && !trimmed.contains("Time") && !trimmed.contains("Content") {
                 if let Some((timestamp, note_content)) = self.parse_table_note(trimmed) {
-                    converted_lines.push(format!("- [{}] {}", timestamp, note_content));
+                    converted_lines.push(format!("- {} {}", timestamp, note_content));
                 } else {
                     converted_lines.push(line.to_string());
                 }
+            }
+            // Skip table headers and separators when converting to bullet
+            else if target_format == &NoteFormat::Bullet && trimmed.starts_with("|") && (trimmed.contains("Time") || trimmed.contains("Content") || trimmed.starts_with("|---")) {
+                // Skip table headers and separators
+                continue;
+            }
+            // Skip blank lines when converting table to bullet
+            else if target_format == &NoteFormat::Bullet && trimmed.is_empty() {
+                // Skip blank lines between table rows when converting to bullet
+                continue;
             }
             else {
                 converted_lines.push(line.to_string());
@@ -444,13 +545,56 @@ impl Vault {
         Ok(converted_lines.join("\n"))
     }
 
+    /// Clean up blank lines in table format
+    fn clean_table_blank_lines(&self, content: &str) -> String {
+        let lines: Vec<&str> = content.lines().collect();
+        let mut cleaned_lines = Vec::new();
+        let mut in_table = false;
+        let mut last_was_table_row = false;
+        
+        for line in lines {
+            let trimmed = line.trim();
+            
+            // Check if this is a table row
+            if trimmed.starts_with("|") && !trimmed.starts_with("|---") && !trimmed.contains("Time") && !trimmed.contains("Content") {
+                in_table = true;
+                last_was_table_row = true;
+                cleaned_lines.push(line.to_string());
+            }
+            // Check if this is a table header or separator
+            else if trimmed.starts_with("|") && (trimmed.contains("Time") || trimmed.contains("Content") || trimmed.starts_with("|---")) {
+                in_table = true;
+                last_was_table_row = false;
+                cleaned_lines.push(line.to_string());
+            }
+            // Check if this is a blank line
+            else if trimmed.is_empty() {
+                // Only keep blank lines if we're not in a table or if it's the first blank line after a table
+                if !in_table || !last_was_table_row {
+                    cleaned_lines.push(line.to_string());
+                }
+                last_was_table_row = false;
+            }
+            // Non-table content
+            else {
+                in_table = false;
+                last_was_table_row = false;
+                cleaned_lines.push(line.to_string());
+            }
+        }
+        
+        cleaned_lines.join("\n")
+    }
+
     /// Parse a bullet note to extract timestamp and content
     fn parse_bullet_note(&self, line: &str) -> Option<(String, String)> {
-        // Format: "- [timestamp] content"
-        if let Some(start) = line.find("- [") {
-            if let Some(end) = line[start + 3..].find("]") {
-                let timestamp = line[start + 3..start + 3 + end].to_string();
-                let content = line[start + 3 + end + 1..].trim().to_string();
+        // Format: "- timestamp content"
+        if let Some(start) = line.find("- ") {
+            let after_dash = &line[start + 2..];
+            // Find the first space after the dash to separate timestamp from content
+            if let Some(space_pos) = after_dash.find(' ') {
+                let timestamp = after_dash[..space_pos].to_string();
+                let content = after_dash[space_pos + 1..].trim().to_string();
                 return Some((timestamp, content));
             }
         }
@@ -467,6 +611,592 @@ impl Vault {
             return Some((timestamp, content));
         }
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::collections::HashMap;
+    use tempfile::TempDir;
+
+    fn create_test_vault() -> (Vault, TempDir) {
+        let temp_dir = TempDir::new().unwrap();
+        let vault_path = temp_dir.path().join("test_vault");
+        fs::create_dir_all(&vault_path).unwrap();
+
+        let config = VaultConfig {
+            name: "test".to_string(),
+            path: vault_path,
+            locale: "en_US.UTF-8".to_string(),
+            phrases: HashMap::new(),
+            section_header: None,
+            section_header_work: None,
+            section_header_personal: None,
+            section_header_health: None,
+            section_header_meetings: None,
+            table_headers: None,
+            date_format: None,
+            template_file: None,
+            file_path_format: None,
+            list_type: Some(NoteFormat::Table),
+        };
+
+        let vault = Vault::new(config);
+        (vault, temp_dir)
+    }
+
+    #[test]
+    fn test_table_format_no_blank_lines() {
+        let (vault, _temp_dir) = create_test_vault();
+        let date = chrono::Local::now().date_naive();
+
+        // Add first note
+        vault.add_note("Test1", None, None).unwrap();
+
+        // Add second note
+        vault.add_note("Test2", None, None).unwrap();
+
+        // Read the file content
+        let note_path = vault.get_note_path(date);
+        let content = fs::read_to_string(&note_path).unwrap();
+        let lines: Vec<&str> = content.lines().collect();
+        
+
+        // Find the table section
+        let mut table_start = None;
+        for (i, line) in lines.iter().enumerate() {
+            if line.starts_with("| Time | Content |") {
+                table_start = Some(i);
+                break;
+            }
+        }
+
+        assert!(table_start.is_some(), "Table header not found");
+        let start = table_start.unwrap();
+
+        // Check that there are no blank lines between table rows
+        let table_lines = &lines[start..];
+        
+        // Find the first data row (after header and separator)
+        let mut data_start = None;
+        for (i, line) in table_lines.iter().enumerate() {
+            if line.starts_with("|") && !line.starts_with("|---") && !line.contains("Time") && !line.contains("Content") {
+                data_start = Some(i);
+                break;
+            }
+        }
+
+        assert!(data_start.is_some(), "No data rows found in table");
+        let data_start = data_start.unwrap();
+
+        // Check that there are no blank lines between data rows
+        let mut in_data_section = false;
+        let mut blank_line_found = false;
+        
+        for line in &table_lines[data_start..] {
+            if line.starts_with("|") && !line.starts_with("|---") && !line.contains("Time") && !line.contains("Content") {
+                if in_data_section && blank_line_found {
+                    panic!("Blank line found between table rows");
+                }
+                in_data_section = true;
+                blank_line_found = false;
+            } else if line.trim().is_empty() {
+                if in_data_section {
+                    blank_line_found = true;
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_table_format_existing_file_no_blank_lines() {
+        let (vault, _temp_dir) = create_test_vault();
+        let date = chrono::Local::now().date_naive();
+
+        // Create a file with some existing content first that has blank lines
+        let note_path = vault.get_note_path(date);
+        let existing_content = "---
+date: 2025-10-26
+---
+
+| Time | Content |
+|------|----------|
+| 00:04:43 | Test1 |
+
+| 00:05:28 | Test2 |
+";
+        fs::write(&note_path, existing_content).unwrap();
+
+        // Add third note to existing file
+        vault.add_note("Test3", None, None).unwrap();
+
+        // Add fourth note to existing file
+        vault.add_note("Test4", None, None).unwrap();
+
+        // Read the file content
+        let note_path = vault.get_note_path(date);
+        let content = fs::read_to_string(&note_path).unwrap();
+        let lines: Vec<&str> = content.lines().collect();
+        
+
+        // Find the table section
+        let mut table_start = None;
+        for (i, line) in lines.iter().enumerate() {
+            if line.starts_with("| Time | Content |") {
+                table_start = Some(i);
+                break;
+            }
+        }
+
+        assert!(table_start.is_some(), "Table header not found");
+        let start = table_start.unwrap();
+
+        // Check that there are no blank lines between table rows
+        let table_lines = &lines[start..];
+        
+        // Find the first data row (after header and separator)
+        let mut data_start = None;
+        for (i, line) in table_lines.iter().enumerate() {
+            if line.starts_with("|") && !line.starts_with("|---") && !line.contains("Time") && !line.contains("Content") {
+                data_start = Some(i);
+                break;
+            }
+        }
+
+        assert!(data_start.is_some(), "No data rows found in table");
+        let data_start = data_start.unwrap();
+
+        // Check that there are no blank lines between data rows
+        let mut in_data_section = false;
+        let mut blank_line_found = false;
+        
+        for line in &table_lines[data_start..] {
+            if line.starts_with("|") && !line.starts_with("|---") && !line.contains("Time") && !line.contains("Content") {
+                if in_data_section && blank_line_found {
+                    panic!("Blank line found between table rows in existing file");
+                }
+                in_data_section = true;
+                blank_line_found = false;
+            } else if line.trim().is_empty() {
+                if in_data_section {
+                    blank_line_found = true;
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_bullet_format_no_header() {
+        let (mut vault, _temp_dir) = create_test_vault();
+        
+        // Set bullet format
+        vault.config.list_type = Some(NoteFormat::Bullet);
+        
+        let date = chrono::Local::now().date_naive();
+
+        // Add first note - should not create a header
+        vault.add_note("Test1", None, None).unwrap();
+
+        // Read the file content
+        let note_path = vault.get_note_path(date);
+        let content = fs::read_to_string(&note_path).unwrap();
+        
+        
+        // Should not contain table headers
+        assert!(!content.contains("| Time | Content |"), "Bullet format should not have table headers");
+        assert!(!content.contains("|------|----------|"), "Bullet format should not have table separators");
+        
+        // Should contain bullet format
+        assert!(content.contains("- "), "Bullet format should contain bullet points");
+    }
+
+    #[test]
+    fn test_table_to_bullet_conversion_removes_header() {
+        let (mut vault, _temp_dir) = create_test_vault();
+        
+        // Start with table format
+        vault.config.list_type = Some(NoteFormat::Table);
+        
+        let date = chrono::Local::now().date_naive();
+
+        // Add first note to create table format
+        vault.add_note("Test1", None, None).unwrap();
+
+        // Switch to bullet format
+        vault.config.list_type = Some(NoteFormat::Bullet);
+
+        // Add second note - should convert to bullet format without headers
+        vault.add_note("Test2", None, None).unwrap();
+
+        // Read the file content
+        let note_path = vault.get_note_path(date);
+        let content = fs::read_to_string(&note_path).unwrap();
+        
+        
+        // Should not contain table headers
+        assert!(!content.contains("| Time | Content |"), "Converted bullet format should not have table headers");
+        assert!(!content.contains("|------|----------|"), "Converted bullet format should not have table separators");
+        
+        // Should contain bullet format
+        assert!(content.contains("- "), "Converted bullet format should contain bullet points");
+    }
+
+    #[test]
+    fn test_bullet_to_table_conversion_no_blank_lines() {
+        let (mut vault, _temp_dir) = create_test_vault();
+        
+        // Start with bullet format
+        vault.config.list_type = Some(NoteFormat::Bullet);
+        
+        let date = chrono::Local::now().date_naive();
+
+        // Create a file with bullet points that have blank lines between them
+        let note_path = vault.get_note_path(date);
+        let existing_content = "---
+date: 2025-10-26
+---
+
+- 00:04:43 Test1
+
+- 00:05:28 Test2
+";
+        fs::write(&note_path, existing_content).unwrap();
+
+        // Switch to table format
+        vault.config.list_type = Some(NoteFormat::Table);
+
+        // Add third note - should convert to table format without blank lines
+        vault.add_note("Test3", None, None).unwrap();
+
+        // Read the file content
+        let note_path = vault.get_note_path(date);
+        let content = fs::read_to_string(&note_path).unwrap();
+        
+        
+        // Should not contain blank lines between table rows
+        let lines: Vec<&str> = content.lines().collect();
+        let mut in_table = false;
+        let mut blank_line_found = false;
+        
+        for line in &lines {
+            if line.starts_with("|") && !line.starts_with("|---") && !line.contains("Time") && !line.contains("Content") {
+                if in_table && blank_line_found {
+                    panic!("Blank line found between table rows in bullet-to-table conversion");
+                }
+                in_table = true;
+                blank_line_found = false;
+            } else if line.trim().is_empty() {
+                if in_table {
+                    blank_line_found = true;
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_table_to_bullet_conversion_no_blank_lines() {
+        let (mut vault, _temp_dir) = create_test_vault();
+        
+        // Start with table format
+        vault.config.list_type = Some(NoteFormat::Table);
+        
+        let date = chrono::Local::now().date_naive();
+
+        // Create a file with table rows that have blank lines between them
+        let note_path = vault.get_note_path(date);
+        let existing_content = "---
+date: 2025-10-26
+---
+
+| Time | Content |
+|------|----------|
+| 00:04:43 | Test1 |
+
+| 00:05:28 | Test2 |
+";
+        fs::write(&note_path, existing_content).unwrap();
+
+        // Switch to bullet format
+        vault.config.list_type = Some(NoteFormat::Bullet);
+
+        // Add third note - should convert to bullet format without blank lines
+        vault.add_note("Test3", None, None).unwrap();
+
+        // Read the file content
+        let note_path = vault.get_note_path(date);
+        let content = fs::read_to_string(&note_path).unwrap();
+        
+        
+        // Should not contain blank lines between bullet points
+        let lines: Vec<&str> = content.lines().collect();
+        let mut in_bullet_section = false;
+        let mut blank_line_found = false;
+        
+        for line in &lines {
+            if line.starts_with("- ") {
+                if in_bullet_section && blank_line_found {
+                    panic!("Blank line found between bullet points in table-to-bullet conversion");
+                }
+                in_bullet_section = true;
+                blank_line_found = false;
+            } else if line.trim().is_empty() {
+                if in_bullet_section {
+                    blank_line_found = true;
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_adding_note_to_existing_file_no_blank_lines() {
+        let (vault, _temp_dir) = create_test_vault();
+        let date = chrono::Local::now().date_naive();
+
+        // Create a file with some existing content that has blank lines between table rows
+        let note_path = vault.get_note_path(date);
+        let existing_content = "---
+date: 2025-10-26
+---
+
+| Time | Content |
+|------|----------|
+| 00:04:43 | Test1 |
+
+| 00:05:28 | Test2 |
+";
+        fs::write(&note_path, existing_content).unwrap();
+
+        // Add third note to existing file - should not create blank lines
+        vault.add_note("Test3", None, None).unwrap();
+
+        // Add fourth note to existing file - should not create blank lines
+        vault.add_note("Test4", None, None).unwrap();
+
+        // Read the file content
+        let note_path = vault.get_note_path(date);
+        let content = fs::read_to_string(&note_path).unwrap();
+        
+        // Debug: print the actual content
+        println!("Adding notes to existing file content:");
+        println!("{}", content);
+        
+        // Should not contain blank lines between notes
+        let lines: Vec<&str> = content.lines().collect();
+        let mut in_notes_section = false;
+        let mut blank_line_found = false;
+        
+        for line in &lines {
+            if line.starts_with("|") && !line.starts_with("|---") && !line.contains("Time") && !line.contains("Content") {
+                if in_notes_section && blank_line_found {
+                    panic!("Blank line found between notes when adding to existing file");
+                }
+                in_notes_section = true;
+                blank_line_found = false;
+            } else if line.trim().is_empty() {
+                if in_notes_section {
+                    blank_line_found = true;
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_append_note_without_conversion_no_blank_lines() {
+        let (vault, _temp_dir) = create_test_vault();
+        let date = chrono::Local::now().date_naive();
+
+        // Create a file with some existing content
+        let note_path = vault.get_note_path(date);
+        let existing_content = "---
+date: 2025-10-26
+---
+
+| Time | Content |
+|------|----------|
+| 00:04:43 | Test1 |
+| 00:05:28 | Test2 |
+";
+        fs::write(&note_path, existing_content).unwrap();
+
+        // Add third note to existing file - this should trigger the append logic
+        vault.add_note("Test3", None, None).unwrap();
+
+        // Read the file content
+        let note_path = vault.get_note_path(date);
+        let content = fs::read_to_string(&note_path).unwrap();
+        
+        
+        // Should not contain blank lines between notes
+        let lines: Vec<&str> = content.lines().collect();
+        let mut in_notes_section = false;
+        let mut blank_line_found = false;
+        
+        for line in &lines {
+            if line.starts_with("|") && !line.starts_with("|---") && !line.contains("Time") && !line.contains("Content") {
+                if in_notes_section && blank_line_found {
+                    panic!("Blank line found between notes when appending to existing file");
+                }
+                in_notes_section = true;
+                blank_line_found = false;
+            } else if line.trim().is_empty() {
+                if in_notes_section {
+                    blank_line_found = true;
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_section_insertion_no_blank_lines() {
+        let (mut vault, _temp_dir) = create_test_vault();
+        
+        // Set up a section header
+        vault.config.section_header = Some("Test Section".to_string());
+        
+        let date = chrono::Local::now().date_naive();
+
+        // Create a file with a section that has some content
+        let note_path = vault.get_note_path(date);
+        let existing_content = "---
+date: 2025-10-26
+---
+
+# Test Section
+
+| Time | Content |
+|------|----------|
+| 00:04:43 | Test1 |
+| 00:05:28 | Test2 |
+
+# Another Section
+Some other content
+";
+        fs::write(&note_path, existing_content).unwrap();
+
+        // Add third note to the section - should not create blank lines
+        vault.add_note("Test3", None, None).unwrap();
+
+        // Read the file content
+        let note_path = vault.get_note_path(date);
+        let content = fs::read_to_string(&note_path).unwrap();
+        
+        // Debug: print the actual content
+        println!("Section insertion content:");
+        println!("{}", content);
+        
+        // Should not contain blank lines between notes in the section
+        let lines: Vec<&str> = content.lines().collect();
+        let mut in_section = false;
+        let mut blank_line_found = false;
+        
+        for line in &lines {
+            if *line == "# Test Section" {
+                in_section = true;
+                blank_line_found = false;
+                continue;
+            }
+            if *line == "# Another Section" {
+                in_section = false;
+                break;
+            }
+            if in_section && line.starts_with("|") && !line.starts_with("|---") && !line.contains("Time") && !line.contains("Content") {
+                if blank_line_found {
+                    panic!("Blank line found between notes in section");
+                }
+                blank_line_found = false;
+            } else if in_section && line.trim().is_empty() {
+                blank_line_found = true;
+            }
+        }
+    }
+
+    #[test]
+    fn test_header_flag_functionality() {
+        let (vault, _temp_dir) = create_test_vault();
+        let date = chrono::Local::now().date_naive();
+
+        // Add some notes in table format
+        vault.add_note("Test1", None, None).unwrap();
+        vault.add_note("Test2", None, None).unwrap();
+
+        // Test listing without header flag
+        let notes = vault.list_notes(date, None).unwrap();
+        assert!(!notes.is_empty(), "Should have notes");
+        
+        // Verify that table headers are not included in the notes
+        for note in &notes {
+            assert!(!note.contains("Time") && !note.contains("Content"), 
+                "Table headers should not be included in notes: {}", note);
+        }
+    }
+
+    #[test]
+    fn test_table_format_with_section_no_blank_lines() {
+        let (mut vault, _temp_dir) = create_test_vault();
+        
+        // Set up a section header
+        vault.config.section_header = Some("Test Section".to_string());
+        
+        let date = chrono::Local::now().date_naive();
+
+        // Add first note
+        vault.add_note("Test1", None, None).unwrap();
+
+        // Add second note
+        vault.add_note("Test2", None, None).unwrap();
+
+        // Read the file content
+        let note_path = vault.get_note_path(date);
+        let content = fs::read_to_string(&note_path).unwrap();
+        let lines: Vec<&str> = content.lines().collect();
+
+        // Find the section
+        let mut section_start = None;
+        for (i, line) in lines.iter().enumerate() {
+            if *line == "# Test Section" {
+                section_start = Some(i);
+                break;
+            }
+        }
+
+        assert!(section_start.is_some(), "Section header not found");
+        let start = section_start.unwrap();
+
+        // Check that there are no blank lines between the section header and table
+        let section_lines = &lines[start..];
+        
+        // The line after the section header should be the table header
+        assert!(section_lines.len() > 1, "No content after section header");
+        
+        // Find the table header after the section
+        let mut table_header_found = false;
+        for line in section_lines {
+            if line.starts_with("| Time | Content |") {
+                table_header_found = true;
+                break;
+            }
+        }
+        assert!(table_header_found, "Table header not found after section");
+
+        // Check for blank lines between table rows
+        let mut in_table = false;
+        let mut blank_line_found = false;
+        
+        for line in section_lines {
+            if line.starts_with("|") && !line.starts_with("|---") && !line.contains("Time") && !line.contains("Content") {
+                if in_table && blank_line_found {
+                    panic!("Blank line found between table rows in section");
+                }
+                in_table = true;
+                blank_line_found = false;
+            } else if line.trim().is_empty() {
+                if in_table {
+                    blank_line_found = true;
+                }
+            }
+        }
     }
 }
 

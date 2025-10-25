@@ -4,6 +4,12 @@ use std::path::PathBuf;
 use std::env;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TableHeaders {
+    pub time: String,
+    pub content: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub vaults: HashMap<String, VaultConfig>,
     pub default_vault: Option<String>,
@@ -17,7 +23,11 @@ pub struct VaultConfig {
     pub locale: String,
     pub phrases: HashMap<String, String>,
     pub section_header: Option<String>,
-    pub section_headers: HashMap<String, String>,
+    pub section_header_work: Option<String>,
+    pub section_header_personal: Option<String>,
+    pub section_header_health: Option<String>,
+    pub section_header_meetings: Option<String>,
+    pub table_headers: Option<TableHeaders>,
     pub date_format: Option<String>,
     #[serde(deserialize_with = "deserialize_template_file_with_expansion")]
     pub template_file: Option<String>,
@@ -160,7 +170,11 @@ impl VaultConfig {
             locale,
             phrases: HashMap::new(),
             section_header: None,
-            section_headers: HashMap::new(),
+            section_header_work: None,
+            section_header_personal: None,
+            section_header_health: None,
+            section_header_meetings: None,
+            table_headers: None,
             date_format: None,
             template_file: None,
             file_path_format: None,
@@ -171,9 +185,13 @@ impl VaultConfig {
     /// Get the section header for a category, falling back to default section_header
     pub fn get_section_header(&self, category: Option<&str>) -> Option<&String> {
         if let Some(cat) = category {
-            // First try category-specific section header
-            if let Some(section_header) = self.section_headers.get(cat) {
-                return Some(section_header);
+            // Try category-specific section headers
+            match cat {
+                "work" => return self.section_header_work.as_ref(),
+                "personal" => return self.section_header_personal.as_ref(),
+                "health" => return self.section_header_health.as_ref(),
+                "meetings" => return self.section_header_meetings.as_ref(),
+                _ => {} // Unknown category, fall through to default
             }
         }
         // Fall back to default section_header
@@ -188,7 +206,11 @@ impl VaultConfig {
             locale: "en-US".to_string(),
             phrases: HashMap::new(),
             section_header: None,
-            section_headers: HashMap::new(),
+            section_header_work: None,
+            section_header_personal: None,
+            section_header_health: None,
+            section_header_meetings: None,
+            table_headers: None,
             date_format: None,
             template_file: None,
             file_path_format: None,

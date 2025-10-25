@@ -49,4 +49,14 @@ pub enum Commands {
         /// Name of the vault to unlist
         vault_name: String,
     },
+    /// Show the location of today's file
+    Today {
+        /// Name of the vault (uses default if not specified)
+        #[arg(short, long)]
+        vault: Option<String>,
+        
+        /// Show detailed information including file existence
+        #[arg(long)]
+        verbose: bool,
+    },
 }

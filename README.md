@@ -66,6 +66,9 @@ journeyctl set-default vault-name    # Set default vault
 journeyctl show-default              # Show current default
 journeyctl unset-default             # Remove default vault
 journeyctl unlist-vault vault-name  # Unlist a vault
+journeyctl today                     # Show today's file path
+journeyctl today --vault vault-name # Show today's file path for specific vault
+journeyctl today --verbose          # Show detailed information
 ```
 
 ## Quick Start
@@ -277,6 +280,38 @@ journeyctl unlist-vault vault-name
 - Commands like `journey "My note"` will automatically use the default vault
 - Still works with `--vault` to override the default when needed
 
+### Show Today's File Location
+
+```bash
+# Show today's file path (default behavior - just the path)
+journeyctl today
+
+# Show today's file path for a specific vault
+journeyctl today --vault vault-name
+
+# Show detailed information including file existence
+journeyctl today --verbose
+```
+
+**Output Examples:**
+
+**Default (concise):**
+```
+/home/user/journal/2025-01-15.md
+```
+
+**Verbose:**
+```
+Today's file location: /home/user/journal/2025-01-15.md
+File exists: Yes
+```
+
+**Use Cases:**
+- **Quick file access**: Find the exact path to today's note file
+- **Script integration**: Use the path in scripts or other tools (default output is perfect for this)
+- **File existence check**: Use `--verbose` to see if today's file already exists
+- **Debugging**: Use `--verbose` to verify file paths and vault configuration
+
 ### Unlist a Vault
 
 ```bash
@@ -364,6 +399,9 @@ journey --date 2025-10-22 --list
 
 # List notes for yesterday
 journey --relative-date 1 --list
+
+# List notes with table headers (for table format)
+journey --list --header
 ```
 
 ### Edit Notes
@@ -404,12 +442,11 @@ vaults:
     name: work
     path: ~/Documents/work-journal
     locale: en_US.UTF-8
-    section_header: "Daily Standup"  # Default section
-    section_headers:  # Category-specific sections
-      work: "Work Notes"
-      personal: "Personal Notes"
-      health: "Health & Fitness"
-      meetings: "Meeting Notes"
+    section_header: "Todays notes"  # Default section
+    section_header_work: "Work Notes"
+    section_header_personal: "Personal Notes"
+    section_header_health: "Health & Fitness"
+    section_header_meetings: "Meeting Notes"
     phrases: {}
     date_format: null
 ```
@@ -442,16 +479,16 @@ date: 2025-10-24
 
 # Other Section
 
-- [09:00] Some other note
+- 09:00 Some other note
 
 # Daily Standup
 
-- [10:00] Morning standup notes
-- [10:15] New note added here automatically
+- 10:00 Morning standup notes
+- 10:15 New note added here automatically
 
 # Another Section
 
-- [11:00] More notes
+- 11:00 More notes
 ```
 
 ### Template Files
@@ -563,7 +600,11 @@ vaults:
     locale: en_US.UTF-8
     phrases: {}
     section_header: null
-    section_headers: {}
+    section_header_work: null
+    section_header_personal: null
+    section_header_health: null
+    section_header_meetings: null
+    table_headers: null
     list_type: null
 ```
 
@@ -582,7 +623,11 @@ vaults:
     locale: en_US.UTF-8
     phrases: {}
     section_header: null
-    section_headers: {}
+    section_header_work: null
+    section_header_personal: null
+    section_header_health: null
+    section_header_meetings: null
+    table_headers: null
     list_type: null
 ```
 
@@ -597,7 +642,11 @@ vaults:
     locale: en_US.UTF-8
     phrases: {}
     section_header: null
-    section_headers: {}
+    section_header_work: null
+    section_header_personal: null
+    section_header_health: null
+    section_header_meetings: null
+    table_headers: null
     list_type: null
 ```
 
@@ -655,7 +704,7 @@ When you add a note containing a phrase key, it gets automatically replaced with
 journey "@meeting went well, then @lunch"
 
 # Becomes this in your journal:
-# - [14:30:00] Team meeting about project status went well, then Had lunch at the usual place
+# - 14:30:00 Team meeting about project status went well, then Had lunch at the usual place
 ```
 
 **Phrase Features:**
@@ -681,8 +730,8 @@ Each markdown file contains by default:
 date: 2025-10-24
 ---
 
-- [13:35:27] This is my first note
-- [13:35:35] This is my second note
+- 13:35:27 This is my first note
+- 13:35:35 This is my second note
 ```
 
 This can be changed by using templates, see further down. 
@@ -760,9 +809,9 @@ vaults:
 
 **Bullet Format:**
 ```markdown
-- [09:00] Morning standup meeting
-- [10:30] Code review completed
-- [14:00] Project planning session
+- 09:00 Morning standup meeting
+- 10:30 Code review completed
+- 14:00 Project planning session
 ```
 
 **Table Format:**
@@ -774,6 +823,101 @@ vaults:
 | 14:00 | Project planning session |
 ```
 
+**Locale-Dependent Table Headers:**
+Journey automatically uses appropriate table headers based on your vault's locale:
+
+- **English** (`en_US.UTF-8`): `| Time | Content |`
+- **Norwegian** (`no_NO.UTF-8`): `| Tid | Innhold |`
+- **Swedish** (`sv_SE.UTF-8`): `| Tid | Innehåll |`
+- **Danish** (`da_DK.UTF-8`): `| Tid | Indhold |`
+- **Finnish** (`fi_FI.UTF-8`): `| Aika | Sisältö |`
+- **German** (`de_DE.UTF-8`): `| Zeit | Inhalt |`
+- **French** (`fr_FR.UTF-8`): `| Heure | Contenu |`
+- **Spanish** (`es_ES.UTF-8`): `| Hora | Contenido |`
+- **Italian** (`it_IT.UTF-8`): `| Ora | Contenuto |`
+- **Dutch** (`nl_NL.UTF-8`): `| Tijd | Inhoud |`
+- **Portuguese** (`pt_PT.UTF-8`): `| Hora | Conteúdo |`
+- **Russian** (`ru_RU.UTF-8`): `| Время | Содержание |`
+- **Japanese** (`ja_JP.UTF-8`): `| 時間 | 内容 |`
+- **Chinese** (`zh_CN.UTF-8`): `| 时间 | 内容 |`
+
+### Table Format with Headers
+
+When using table format for listing notes, you can include markdown table headers using the `--header` flag:
+
+```bash
+# List notes with table headers
+journey --list --header
+```
+
+**Output Examples:**
+
+**Without `--header` flag (default):**
+```
+Notes for 2025-10-26:
+| 09:00 | Morning standup meeting |
+| 10:30 | Code review completed |
+| 14:00 | Project planning session |
+```
+
+**With `--header` flag:**
+```
+| Time | Content |
+|------|----------|
+| 09:00 | Morning standup meeting |
+| 10:30 | Code review completed |
+| 14:00 | Project planning session |
+```
+
+**Use Cases:**
+- **Clean table output**: Perfect for piping to other tools or scripts
+- **Markdown compatibility**: Headers make the output valid markdown tables
+- **Documentation**: Include table headers when sharing or documenting notes
+- **Tool integration**: Use with tools that expect proper markdown table format
+
+**Behavior:**
+- Only shows headers when notes are in table format
+- Automatically detects table format notes
+- Uses locale-dependent headers (same as vault configuration)
+- Skips the "Notes for {date}" message for cleaner output
+
+### Custom Table Headers
+
+You can override the default locale-dependent table headers by configuring custom headers in your vault:
+
+```yaml
+vaults:
+  work:
+    name: work
+    path: ~/Documents/work-journal
+    locale: en_US.UTF-8
+    table_headers:
+      time: "Timestamp"
+      content: "Note"
+    section_header: "Todays notes"
+    section_header_work: "Work Notes"
+    section_header_personal: "Personal Notes"
+    section_header_health: "Health & Fitness"
+    section_header_meetings: "Meeting Notes"
+    phrases: {}
+    date_format: null
+```
+
+**Custom Headers Example:**
+```markdown
+| Timestamp | Note |
+|-----------|------|
+| 09:00 | Morning standup meeting |
+| 10:30 | Code review completed |
+| 14:00 | Project planning session |
+```
+
+**Use Cases:**
+- **Custom terminology**: Use your preferred terms for time and content
+- **Abbreviated headers**: Use shorter headers for space-constrained displays
+- **Specialized headers**: Use domain-specific terminology (e.g., "Event" and "Description")
+- **Multi-language support**: Override locale detection for specific needs
+
 
 ## Options
 
@@ -782,6 +926,7 @@ vaults:
 - `-t, --time <TIME>`: Specify time in HH:MM or HH:MM:SS format
 - `--time-format <FORMAT>`: Override time format (12h|24h)
 - `-c, --category <CATEGORY>`: Specify category for section selection (e.g., 'work' uses section_header_work)
+- `--header`: Include table headers when listing notes in table format
 - `--stdin`: Read input from stdin (each line becomes a separate note)
 - `-V, --vault <NAME>`: Specify vault name
 - `-v, --version`: Show version information
@@ -853,6 +998,9 @@ journey --relative-date 1 Forgot to log this yesterday
 # List all notes for today
 journey --list
 
+# List notes with table headers (for table format)
+journey --list --header
+
 # Edit today's notes
 journey --edit
 
@@ -863,6 +1011,9 @@ journey --time 09:30 "Early morning meeting notes"
 journey -c work "Completed quarterly report"
 journey -c personal "Had dinner with friends"
 journey -c health "30 minutes of cardio"
+
+# Show today's file location
+journeyctl today
 ```
 
 ## Time Format Override

@@ -50,6 +50,7 @@ pub struct CliArgs {
     pub time: Option<String>,
     pub time_format: Option<String>,
     pub category: Option<String>,
+    pub header: bool,
 }
 
 pub struct App {
@@ -128,21 +129,24 @@ impl App {
             crate::journeyctl::Commands::UnlistVault { vault_name } => {
                 self.unlist_vault(&vault_name)
             }
+            crate::journeyctl::Commands::Today { vault, verbose } => {
+                self.show_today_file(vault, verbose)
+            }
         }
     }
 
     fn handle_command_with_args(&mut self, cmd: crate::cli::Commands, vault: Option<String>, date: Option<String>, relative_date: Option<i64>, time: Option<String>, time_format: Option<String>) -> Result<(), JourneyError> {
         match cmd {
             crate::cli::Commands::Add { content } => {
-                let cli_args = CliArgs { vault, date, relative_date, time, time_format, category: None };
+                let cli_args = CliArgs { vault, date, relative_date, time, time_format, category: None, header: false };
                 self.add_note(&content, &cli_args)
             }
             crate::cli::Commands::List => {
-                let cli_args = CliArgs { vault, date, relative_date, time, time_format, category: None };
+                let cli_args = CliArgs { vault, date, relative_date, time, time_format, category: None, header: false };
                 self.list_notes(&cli_args)
             }
             crate::cli::Commands::Edit => {
-                let cli_args = CliArgs { vault, date, relative_date, time, time_format, category: None };
+                let cli_args = CliArgs { vault, date, relative_date, time, time_format, category: None, header: false };
                 self.edit_notes(&cli_args)
             }
         }
@@ -156,6 +160,7 @@ impl App {
             time: cli.time.clone(),
             time_format: cli.time_format.clone(),
             category: cli.category.clone(),
+            header: cli.header,
         };
         
         if cli.list {
@@ -208,7 +213,11 @@ impl App {
             locale,
             phrases: std::collections::HashMap::new(),
             section_header: None,
-            section_headers: std::collections::HashMap::new(),
+            section_header_work: None,
+            section_header_personal: None,
+            section_header_health: None,
+            section_header_meetings: None,
+            table_headers: None,
             date_format: None,
             template_file: None,
             file_path_format: None,
@@ -281,7 +290,11 @@ impl App {
             locale,
             phrases: std::collections::HashMap::new(),
             section_header: None,
-            section_headers: std::collections::HashMap::new(),
+            section_header_work: None,
+            section_header_personal: None,
+            section_header_health: None,
+            section_header_meetings: None,
+            table_headers: None,
             date_format: None,
             template_file: None,
             file_path_format: None,
@@ -531,7 +544,22 @@ impl App {
         if notes.is_empty() {
             println!("No notes found for {}", vault.date_handler.format_date(date));
         } else {
-            println!("Notes for {}:", vault.date_handler.format_date(date));
+            // Only show "Notes for" message if header flag is not set
+            if !cli.header {
+                println!("Notes for {}:", vault.date_handler.format_date(date));
+            }
+            
+            // If header flag is set and we have table format notes, include table headers
+            if cli.header && !notes.is_empty() {
+                // Check if any note is in table format
+                let has_table_format = notes.iter().any(|note| note.trim().starts_with("|"));
+                if has_table_format {
+                    let (time_header, content_header) = vault.get_table_headers();
+                    println!("| {} | {} |", time_header, content_header);
+                    println!("|------|----------|");
+                }
+            }
+            
             for note in notes {
                 println!("{}", note);
             }
@@ -747,6 +775,26 @@ impl App {
             println!("No default vault set");
         }
 
+        Ok(())
+    }
+
+    fn show_today_file(&self, vault_name: Option<String>, verbose: bool) -> Result<(), JourneyError> {
+        let vault = self.get_vault(vault_name.as_deref())?;
+        let today = vault.date_handler.get_current_datetime().date_naive();
+        let file_path = vault.get_note_path(today);
+        
+        if verbose {
+            println!("Today's file location: {}", file_path.display());
+            
+            if file_path.exists() {
+                println!("File exists: Yes");
+            } else {
+                println!("File exists: No");
+            }
+        } else {
+            println!("{}", file_path.display());
+        }
+        
         Ok(())
     }
 }
