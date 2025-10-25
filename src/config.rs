@@ -21,6 +21,11 @@ pub struct VaultConfig {
     #[serde(deserialize_with = "deserialize_template_file_with_expansion")]
     pub template_file: Option<String>,
     pub file_path_format: Option<String>,
+    // Periodic date formats from Obsidian Periodic Notes plugin
+    pub weekly_format: Option<String>,
+    pub monthly_format: Option<String>,
+    pub quarterly_format: Option<String>,
+    pub yearly_format: Option<String>,
 }
 
 /// Custom deserializer for PathBuf that expands tildes
@@ -146,6 +151,28 @@ impl VaultConfig {
             date_format: None,
             template_file: None,
             file_path_format: None,
+            weekly_format: None,
+            monthly_format: None,
+            quarterly_format: None,
+            yearly_format: None,
+        }
+    }
+
+    /// Create a test VaultConfig with minimal required fields
+    pub fn test_config(name: &str, path: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            path: std::path::PathBuf::from(path),
+            locale: "en-US".to_string(),
+            phrases: HashMap::new(),
+            section_name: None,
+            date_format: None,
+            template_file: None,
+            file_path_format: None,
+            weekly_format: None,
+            monthly_format: None,
+            quarterly_format: None,
+            yearly_format: None,
         }
     }
 }
@@ -187,6 +214,20 @@ impl Config {
 
     pub fn unset_default_vault(&mut self) {
         self.default_vault = None;
+    }
+
+    pub fn remove_vault(&mut self, vault_name: &str) -> Result<(), String> {
+        if self.vaults.remove(vault_name).is_some() {
+            // If the removed vault was the default, clear the default
+            if let Some(default_name) = &self.default_vault {
+                if default_name == vault_name {
+                    self.default_vault = None;
+                }
+            }
+            Ok(())
+        } else {
+            Err(format!("Vault '{}' not found", vault_name))
+        }
     }
 }
 

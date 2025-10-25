@@ -11,16 +11,7 @@ fn test_config_new() {
 #[test]
 fn test_config_add_vault() {
     let mut config = Config::new();
-    let vault = VaultConfig {
-        name: "test".to_string(),
-        path: PathBuf::from("/tmp/test"),
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: None,
-        date_format: None,
-        template_file: None,
-        file_path_format: None,
-    };
+    let vault = VaultConfig::test_config("test", "/tmp/test");
     
     config.add_vault(vault);
     assert_eq!(config.vaults.len(), 1);
@@ -30,16 +21,7 @@ fn test_config_add_vault() {
 #[test]
 fn test_config_get_vault() {
     let mut config = Config::new();
-    let vault = VaultConfig {
-        name: "test".to_string(),
-        path: PathBuf::from("/tmp/test"),
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: None,
-        date_format: None,
-        template_file: None,
-        file_path_format: None,
-    };
+    let vault = VaultConfig::test_config("test", "/tmp/test");
     
     config.add_vault(vault);
     
@@ -59,16 +41,7 @@ fn test_config_get_default_vault() {
     assert!(config.get_default_vault().is_none());
     
     // Add a vault
-    let vault = VaultConfig {
-        name: "test".to_string(),
-        path: PathBuf::from("/tmp/test"),
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: None,
-        date_format: None,
-        template_file: None,
-        file_path_format: None,
-    };
+    let vault = VaultConfig::test_config("test", "/tmp/test");
     
     config.add_vault(vault);
     let default = config.get_default_vault();
@@ -78,16 +51,8 @@ fn test_config_get_default_vault() {
 
 #[test]
 fn test_vault_config_creation() {
-    let vault = VaultConfig {
-        name: "test".to_string(),
-        path: PathBuf::from("/tmp/test"),
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: Some("Daily Notes".to_string()),
-        date_format: None,
-        template_file: None,
-        file_path_format: None,
-    };
+    let mut vault = VaultConfig::test_config("test", "/tmp/test");
+    vault.section_name = Some("Daily Notes".to_string());
     
     assert_eq!(vault.name, "test");
     assert_eq!(vault.path, PathBuf::from("/tmp/test"));

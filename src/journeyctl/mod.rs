@@ -44,4 +44,9 @@ pub enum Commands {
     UnsetDefault,
     /// Show current default vault
     ShowDefault,
+    /// Unlist a vault (remove from configuration)
+    UnlistVault {
+        /// Name of the vault to unlist
+        vault_name: String,
+    },
 }

@@ -26,7 +26,6 @@ struct PeriodicNotesConfig {
 
 #[derive(Debug, Clone)]
 struct JournalsConfig {
-    enabled: bool,
     name: String,
     journal_folder: String,
     date_format: String,
@@ -131,6 +130,9 @@ impl App {
             crate::journeyctl::Commands::ShowDefault => {
                 self.show_default_vault()
             }
+            crate::journeyctl::Commands::UnlistVault { vault_name } => {
+                self.unlist_vault(&vault_name)
+            }
         }
     }
 
@@ -213,6 +215,10 @@ impl App {
             date_format: None,
             template_file: None,
             file_path_format: None,
+            weekly_format: None,
+            monthly_format: None,
+            quarterly_format: None,
+            yearly_format: None,
         };
 
         // Add to config and save
@@ -248,6 +254,29 @@ impl App {
         // Check for required Obsidian plugins
         let plugin_configs = self.check_obsidian_plugins(&obsidian_dir)?;
 
+        // Print plugin detection results
+        println!("🔍 Detected Obsidian plugins:");
+        if let Some(_) = &plugin_configs.daily_notes {
+            println!("  ✅ Daily Notes (core plugin) - enabled");
+        } else {
+            println!("  ❌ Daily Notes (core plugin) - not enabled");
+        }
+
+        if let Some(_) = &plugin_configs.periodic_notes {
+            println!("  ✅ Periodic Notes plugin - enabled");
+        } else {
+            println!("  ❌ Periodic Notes plugin - not enabled");
+        }
+
+        if !plugin_configs.journals.is_empty() {
+            println!("  ✅ Journals plugin - enabled ({} journal(s) configured)", plugin_configs.journals.len());
+            for journal in &plugin_configs.journals {
+                println!("    📝 Journal: '{}' (folder: {})", journal.name, journal.journal_folder);
+            }
+        } else {
+            println!("  ❌ Journals plugin - not configured");
+        }
+
         // Get system locale
         let locale = self.get_system_locale();
 
@@ -261,6 +290,10 @@ impl App {
             date_format: None,
             template_file: None,
             file_path_format: None,
+            weekly_format: None,
+            monthly_format: None,
+            quarterly_format: None,
+            yearly_format: None,
         };
 
         // Apply Obsidian plugin configurations (excluding journals for now)
@@ -294,7 +327,24 @@ impl App {
         // Save configuration
         self.config_manager.save_config(&self.config)?;
 
-        println!("Obsidian vault '{}' initialized successfully with {} vault(s)!", vault_name, vault_count);
+        println!();
+        println!("🎉 Obsidian vault '{}' initialized successfully with {} vault(s)!", vault_name, vault_count);
+        
+        // Print configuration summary
+        if let Some(daily_notes) = &plugin_configs.daily_notes {
+            println!("📅 Daily Notes: format='{}', folder='{}'", daily_notes.format, daily_notes.folder);
+        }
+        
+        if let Some(periodic_notes) = &plugin_configs.periodic_notes {
+            println!("📊 Periodic Notes: weekly='{}', monthly='{}', quarterly='{}', yearly='{}'", 
+                periodic_notes.weekly_format, periodic_notes.monthly_format, 
+                periodic_notes.quarterly_format, periodic_notes.yearly_format);
+        }
+        
+        if !plugin_configs.journals.is_empty() {
+            println!("📚 Journals: {} configured", plugin_configs.journals.len());
+        }
+        
         Ok(())
     }
 
@@ -343,6 +393,9 @@ impl App {
                         template,
                     });
                 }
+            } else {
+                // If enabled field is missing, assume plugin is disabled
+                return Err(JourneyError::Config("Daily Notes plugin not enabled".to_string()));
             }
         }
 
@@ -370,6 +423,9 @@ impl App {
             if !enabled.as_bool().unwrap_or(false) {
                 return Err(JourneyError::Config("Periodic Notes plugin not enabled".to_string()));
             }
+        } else {
+            // If enabled field is missing, assume plugin is disabled
+            return Err(JourneyError::Config("Periodic Notes plugin not enabled".to_string()));
         }
 
         // Extract configuration
@@ -429,7 +485,6 @@ impl App {
                     .to_string();
 
                 journal_configs.push(JournalsConfig {
-                    enabled: true,
                     name: journal_name.clone(),
                     journal_folder,
                     date_format,
@@ -462,11 +517,11 @@ impl App {
         // Apply Periodic Notes configuration
         if let Some(periodic_notes) = &plugin_configs.periodic_notes {
             if periodic_notes.enabled {
-                // Store periodic notes configuration in phrases for now
-                vault_config.phrases.insert("weekly_format".to_string(), periodic_notes.weekly_format.clone());
-                vault_config.phrases.insert("monthly_format".to_string(), periodic_notes.monthly_format.clone());
-                vault_config.phrases.insert("quarterly_format".to_string(), periodic_notes.quarterly_format.clone());
-                vault_config.phrases.insert("yearly_format".to_string(), periodic_notes.yearly_format.clone());
+                // Store periodic notes configuration in dedicated fields
+                vault_config.weekly_format = Some(periodic_notes.weekly_format.clone());
+                vault_config.monthly_format = Some(periodic_notes.monthly_format.clone());
+                vault_config.quarterly_format = Some(periodic_notes.quarterly_format.clone());
+                vault_config.yearly_format = Some(periodic_notes.yearly_format.clone());
             }
         }
 
@@ -655,6 +710,29 @@ impl App {
             }
         }
         Ok(())
+    }
+
+    pub fn unlist_vault(&mut self, vault_name: &str) -> Result<(), JourneyError> {
+        // Check if vault exists
+        if !self.config.vaults.contains_key(vault_name) {
+            return Err(JourneyError::VaultNotFound(format!("Vault '{}' not found", vault_name)));
+        }
+
+        // Remove vault from config
+        self.config.remove_vault(vault_name)
+            .map_err(|e| JourneyError::Config(e))?;
+
+        // Save updated config
+        self.config_manager.save_config(&self.config)?;
+
+        println!("Vault '{}' unlisted successfully!", vault_name);
+        Ok(())
+    }
+
+    // Test helper methods
+    #[doc(hidden)]
+    pub fn get_config(&self) -> &Config {
+        &self.config
     }
 
     fn list_vaults(&self) -> Result<(), JourneyError> {

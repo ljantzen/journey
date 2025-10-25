@@ -256,7 +256,17 @@ impl Vault {
         result = result.replace("{month:02}", &format!("{:02}", month));
         result = result.replace("{month}", &month.to_string());
         
-        // Replace day/date with zero-padding
+        // Replace date:MM (zero-padded month) for Journals plugin compatibility
+        // Process double braces first to avoid conflicts
+        result = result.replace("{{date:MM}}", &format!("{:02}", month));
+        result = result.replace("{date:MM}", &format!("{:02}", month));
+        
+        // Replace date:y (two-digit year) for Journals plugin compatibility
+        // Process double braces first to avoid conflicts
+        result = result.replace("{{date:y}}", &format!("{:02}", year % 100));
+        result = result.replace("{date:y}", &format!("{:02}", year % 100));
+        
+        // Replace day/date with zero-padding (after date:MM and date:y to avoid conflicts)
         result = result.replace("{day:02}", &format!("{:02}", day));
         result = result.replace("{date:02}", &format!("{:02}", day));
         result = result.replace("{day}", &day.to_string());

@@ -65,6 +65,7 @@ journeyctl list                      # List all vaults
 journeyctl set-default vault-name    # Set default vault
 journeyctl show-default              # Show current default
 journeyctl unset-default             # Remove default vault
+journeyctl unlist-vault vault-name  # Unlist a vault
 ```
 
 ## Quick Start
@@ -265,12 +266,46 @@ journeyctl show-default
 
 # Unset the default vault
 journeyctl unset-default
+
+# Unlist a vault
+journeyctl unlist-vault vault-name
 ```
 
 **Benefits:**
 - No need to specify `--vault` for most operations
 - Commands like `journey "My note"` will automatically use the default vault
 - Still works with `--vault` to override the default when needed
+
+### Unlist a Vault
+
+```bash
+journeyctl unlist-vault vault-name
+```
+
+**Important Notes:**
+- **This only removes the vault from Journey's configuration** - it does NOT delete the actual files
+- **Safe operation** - your notes and files remain untouched
+- **Default vault handling** - if you delete the default vault, the default is automatically cleared
+- **Error handling** - provides clear error messages for non-existent vaults
+
+**Examples:**
+```bash
+# Unlist a specific vault
+journeyctl unlist-vault my-old-vault
+
+# Unlist the default vault (default will be cleared)
+journeyctl unlist-vault default-vault
+
+# Error: vault doesn't exist
+journeyctl unlist-vault non-existent
+# Error: Vault not found: Vault 'non-existent' not found
+```
+
+**What happens when you unlist a vault:**
+1. Vault is removed from Journey's configuration
+2. If the unlisted vault was the default, the default is cleared
+3. Your actual files and notes remain completely untouched
+4. You can re-add the vault later using `journeyctl init` if needed
 
 ### Add Notes
 ```bash

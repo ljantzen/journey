@@ -29,16 +29,7 @@ fn test_save_and_load_config() {
     let (config_manager, _temp_dir) = create_test_config_manager();
     
     let mut config = Config::new();
-    let vault = VaultConfig {
-        name: "test".to_string(),
-        path: PathBuf::from("/tmp/test"),
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: None,
-        date_format: None,
-        template_file: None,
-        file_path_format: None,
-    };
+    let vault = VaultConfig::test_config("test", "/tmp/test");
     config.add_vault(vault);
     
     config_manager.save_config(&config).unwrap();

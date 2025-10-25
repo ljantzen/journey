@@ -428,3 +428,124 @@ fn test_add_note_intuitive_relative_dates() {
     let expected_date = Local::now().date_naive() + chrono::Duration::days(1);
     assert_eq!(date, expected_date);
 }
+
+#[test]
+fn test_unlist_vault_success() {
+    // Create a config with multiple vaults
+    let mut config = Config::new();
+    
+    let vault1 = VaultConfig {
+        name: "vault1".to_string(),
+        path: PathBuf::from("/tmp/vault1"),
+        locale: "en-US".to_string(),
+        phrases: HashMap::new(),
+        section_name: None,
+        date_format: None,
+        template_file: None,
+        file_path_format: None,
+    };
+    
+    let vault2 = VaultConfig {
+        name: "vault2".to_string(),
+        path: PathBuf::from("/tmp/vault2"),
+        locale: "en-US".to_string(),
+        phrases: HashMap::new(),
+        section_name: None,
+        date_format: None,
+        template_file: None,
+        file_path_format: None,
+    };
+    
+    config.add_vault(vault1);
+    config.add_vault(vault2);
+    
+    let (mut app, _cleanup) = create_app_with_config(config);
+    
+    // Verify both vaults exist
+    assert!(app.get_config().vaults.contains_key("vault1"));
+    assert!(app.get_config().vaults.contains_key("vault2"));
+    
+    // Unlist vault1
+    let result = app.unlist_vault("vault1");
+    assert!(result.is_ok());
+    
+    // Verify vault1 is unlisted but vault2 remains
+    assert!(!app.get_config().vaults.contains_key("vault1"));
+    assert!(app.get_config().vaults.contains_key("vault2"));
+}
+
+#[test]
+fn test_unlist_vault_not_found() {
+    // Create a config with one vault
+    let mut config = Config::new();
+    
+    let vault = VaultConfig {
+        name: "vault1".to_string(),
+        path: PathBuf::from("/tmp/vault1"),
+        locale: "en-US".to_string(),
+        phrases: HashMap::new(),
+        section_name: None,
+        date_format: None,
+        template_file: None,
+        file_path_format: None,
+    };
+    
+    config.add_vault(vault);
+    
+    let (mut app, _cleanup) = create_app_with_config(config);
+    
+    // Try to unlist non-existent vault
+    let result = app.unlist_vault("non-existent");
+    assert!(result.is_err());
+    
+    // Verify original vault still exists
+    assert!(app.get_config().vaults.contains_key("vault1"));
+}
+
+#[test]
+fn test_unlist_default_vault() {
+    // Create a config with a default vault
+    let mut config = Config::new();
+    
+    let vault1 = VaultConfig {
+        name: "vault1".to_string(),
+        path: PathBuf::from("/tmp/vault1"),
+        locale: "en-US".to_string(),
+        phrases: HashMap::new(),
+        section_name: None,
+        date_format: None,
+        template_file: None,
+        file_path_format: None,
+    };
+    
+    let vault2 = VaultConfig {
+        name: "vault2".to_string(),
+        path: PathBuf::from("/tmp/vault2"),
+        locale: "en-US".to_string(),
+        phrases: HashMap::new(),
+        section_name: None,
+        date_format: None,
+        template_file: None,
+        file_path_format: None,
+    };
+    
+    config.add_vault(vault1);
+    config.add_vault(vault2);
+    config.set_default_vault("vault1").unwrap();
+    
+    let (mut app, _cleanup) = create_app_with_config(config);
+    
+    // Verify default vault is set
+    assert_eq!(app.get_config().default_vault, Some("vault1".to_string()));
+    
+    // Unlist the default vault
+    let result = app.unlist_vault("vault1");
+    assert!(result.is_ok());
+    
+    // Verify default vault is cleared
+    assert!(app.get_config().default_vault.is_none());
+    
+    // Verify vault1 is unlisted but vault2 remains
+    assert!(!app.get_config().vaults.contains_key("vault1"));
+    assert!(app.get_config().vaults.contains_key("vault2"));
+}
