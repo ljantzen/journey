@@ -1,6 +1,6 @@
 [package]
 name = "journey-cli"
-version = "0.9.9"
+version = "0.9.11"
 edition = "2021"
 authors = ["Leif Jantzen <leif@jantzen.no>"]
 description = "A CLI-based journal application with automatic timestamping, vault management, and Obsidian integration"
