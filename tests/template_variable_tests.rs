@@ -32,21 +32,8 @@ updated: {created}
     
     fs::write(&template_path, template_content).unwrap();
     
-    let config = VaultConfig {
-        name: "test".to_string(),
-        path: temp_dir.path().to_path_buf(),
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: None,
-        date_format: None,
-        template_file: Some(template_path.to_string_lossy().to_string()),
-        file_path_format: None,
-        weekly_format: None,
-        monthly_format: None,
-        quarterly_format: None,
-        yearly_format: None,
-        note_format: None,
-    };
+    let mut config = VaultConfig::test_config("test", temp_dir.path().to_str().unwrap());
+    config.template_file = Some(template_path.to_string_lossy().to_string());
     
     let vault = Vault::new(config);
     
@@ -88,21 +75,8 @@ fn test_weekday_variations() {
     let template_content = r#"Today is {weekday} ({Weekday})"#;
     fs::write(&template_path, template_content).unwrap();
     
-    let config = VaultConfig {
-        name: "test".to_string(),
-        path: temp_dir.path().to_path_buf(),
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: None,
-        date_format: None,
-        template_file: Some(template_path.to_string_lossy().to_string()),
-        file_path_format: None,
-        weekly_format: None,
-        monthly_format: None,
-        quarterly_format: None,
-        yearly_format: None,
-        note_format: None,
-    };
+    let mut config = VaultConfig::test_config("test", temp_dir.path().to_str().unwrap());
+    config.template_file = Some(template_path.to_string_lossy().to_string());
     
     let vault = Vault::new(config);
     

@@ -11,7 +11,13 @@ pub struct Vault {
 }
 
 impl Vault {
-    pub fn new(config: VaultConfig) -> Self {
+    pub fn new(mut config: VaultConfig) -> Self {
+        // Backward-compat: map legacy note_format to list_type when not set
+        if config.list_type.is_none() {
+            if let Some(fmt) = config.note_format.clone() {
+                config.list_type = Some(fmt);
+            }
+        }
         let date_handler = DateTimeHandler::new(config.locale.clone());
         Self {
             config,
@@ -98,7 +104,13 @@ impl Vault {
         }
     }
 
-    pub fn add_note(&self, content: &str, timestamp: Option<DateTime<Local>>, category: Option<&str>) -> Result<(), JourneyError> {
+    /// Backwards-compatible API: add a note without category
+    pub fn add_note(&self, content: &str, timestamp: Option<DateTime<Local>>) -> Result<(), JourneyError> {
+        self.add_note_with_category(content, timestamp, None)
+    }
+
+    /// Category-aware API used by the application
+    pub fn add_note_with_category(&self, content: &str, timestamp: Option<DateTime<Local>>, category: Option<&str>) -> Result<(), JourneyError> {
         let timestamp = timestamp.unwrap_or_else(|| self.date_handler.get_current_datetime());
         let date = timestamp.date_naive();
         let note_path = self.get_note_path(date);
@@ -123,16 +135,21 @@ impl Vault {
             // Check if we need to convert the existing format
             let converted_content = self.convert_note_format_if_needed(&existing_content, note_format)?;
             
-            // If section_header is specified, find and append to that section
+            // If section_header is specified, find and insert into that section in chronological order
             if let Some(section_name) = self.config.get_section_header(category) {
                 if let Some(section_start) = self.find_section(&converted_content, section_name) {
                     let mut lines: Vec<&str> = converted_content.lines().collect();
                     
-                    // Find the actual end of content in the section
-                    let content_end = self.find_section_content_end(&lines, section_start);
+                    // Find insertion index to keep chronological order within the section
+                    let insertion_index = self.find_insertion_index(
+                        &lines,
+                        section_start,
+                        &formatted_time,
+                        self.config.list_type.as_ref().unwrap_or(&NoteFormat::Bullet)
+                    );
                     
-                    // Insert the note at the end of the content in the section
-                    lines.insert(content_end, &note_entry);
+                    // Insert the note at the chosen index
+                    lines.insert(insertion_index, &note_entry);
                     
                     fs::write(&note_path, lines.join("\n"))?;
                     return Ok(());
@@ -149,11 +166,16 @@ impl Vault {
                 }
             }
             
-            // Append to end of file
-            let mut content = converted_content;
-            // note_entry already includes a newline, so we don't add an extra one
-            content.push_str(&note_entry);
-            fs::write(&note_path, content)?;
+            // No section configured: insert in chronological order across the whole file
+            let mut lines: Vec<&str> = converted_content.lines().collect();
+            let insertion_index = self.find_insertion_index(
+                &lines,
+                0,
+                &formatted_time,
+                self.config.list_type.as_ref().unwrap_or(&NoteFormat::Bullet)
+            );
+            lines.insert(insertion_index, &note_entry);
+            fs::write(&note_path, lines.join("\n"))?;
         } else {
             // Create new file
             let file_content = if let Some(template_file) = &self.config.template_file {
@@ -193,6 +215,27 @@ impl Vault {
         
         file_content.push_str(note_entry);
         file_content
+    }
+
+    /// Determine if a line is a table header or separator line
+    fn is_table_header_line(&self, line: &str) -> bool {
+        let trimmed = line.trim();
+
+        // Separator like |---|
+        if trimmed.starts_with("|---") {
+            return true;
+        }
+
+        // Match against localized/custom headers
+        if trimmed.starts_with('|') {
+            let (time_header, content_header) = self.get_table_headers();
+            let expected = format!("| {} | {} |", time_header, content_header);
+            if trimmed == expected {
+                return true;
+            }
+        }
+
+        false
     }
 
     fn create_file_from_template(&self, template_file: &str, timestamp: DateTime<Local>, note_entry: &str) -> Result<String, JourneyError> {
@@ -242,10 +285,12 @@ impl Vault {
         processed_content = processed_content.replace("{today}", &today);
         processed_content = processed_content.replace("{{today}}", &today);
         
-        // Handle section name replacement
-        if let Some(section_header) = &self.config.section_header {
-            processed_content = processed_content.replace("{{section_header}}", section_header);
-            processed_content = processed_content.replace("{section_header}", section_header);
+        // Handle section name replacement (support legacy and new placeholders)
+        if let Some(section_title) = self.config.section_header.as_ref().or(self.config.section_name.as_ref()) {
+            processed_content = processed_content.replace("{{section_header}}", section_title);
+            processed_content = processed_content.replace("{section_header}", section_title);
+            processed_content = processed_content.replace("{{section_name}}", section_title);
+            processed_content = processed_content.replace("{section_name}", section_title);
         }
         
         // If the template doesn't contain a placeholder for notes, append the note
@@ -294,7 +339,13 @@ impl Vault {
         content_end
     }
 
-    pub fn list_notes(&self, date: NaiveDate, category: Option<&str>) -> Result<Vec<String>, JourneyError> {
+    /// Backwards-compatible API: list notes without category
+    pub fn list_notes(&self, date: NaiveDate) -> Result<Vec<String>, JourneyError> {
+        self.list_notes_with_category(date, None)
+    }
+
+    /// Category-aware API used by the application
+    pub fn list_notes_with_category(&self, date: NaiveDate, category: Option<&str>) -> Result<Vec<String>, JourneyError> {
         let note_path = self.get_note_path(date);
         
         if !note_path.exists() {
@@ -319,9 +370,8 @@ impl Vault {
                     }
                     // Check for table format (but not table headers or separators)
                     else if trimmed.starts_with("|") && !trimmed.starts_with("|---") && trimmed.contains("|") {
-                        // Skip if it looks like a table header
-                        let (time_header, content_header) = self.get_table_headers();
-                        if !trimmed.contains(&time_header) && !trimmed.contains(&content_header) && !trimmed.contains("Note") {
+                        // Skip if it looks like a table header or separator
+                        if !self.is_table_header_line(trimmed) {
                             notes.push(line.to_string());
                         }
                     }
@@ -338,14 +388,36 @@ impl Vault {
                 }
                 // Check for table format (but not table headers or separators)
                 else if trimmed.starts_with("|") && !trimmed.starts_with("|---") && trimmed.contains("|") {
-                    // Skip if it looks like a table header
-                    let (time_header, content_header) = self.get_table_headers();
-                    if !trimmed.contains(&time_header) && !trimmed.contains(&content_header) && !trimmed.contains("Note") {
+                    // Skip if it looks like a table header or separator
+                    if !self.is_table_header_line(trimmed) {
                         notes.push(line.to_string());
                     }
                 }
             }
         }
+
+        // Sort notes by time extracted from the line (ascending chronological)
+        let note_format = self.config.list_type.as_ref().unwrap_or(&NoteFormat::Bullet);
+        notes.sort_by(|a, b| {
+            let ta = self.extract_time_from_note_line(a, note_format);
+            let tb = self.extract_time_from_note_line(b, note_format);
+            
+            // If both have valid times, compare them
+            if let (Some(time_a), Some(time_b)) = (ta, tb) {
+                time_a.cmp(&time_b)
+            }
+            // If only one has a valid time, put the invalid one at the end
+            else if ta.is_some() {
+                std::cmp::Ordering::Less
+            }
+            else if tb.is_some() {
+                std::cmp::Ordering::Greater
+            }
+            // If neither has a valid time, maintain original order
+            else {
+                std::cmp::Ordering::Equal
+            }
+        });
 
         Ok(notes)
     }
@@ -452,9 +524,86 @@ impl Vault {
     /// Format a note entry according to the specified format
     fn format_note_entry(&self, timestamp: &str, content: &str, format: &NoteFormat) -> String {
         match format {
-            NoteFormat::Bullet => format!("- {} {}\n", timestamp, content),
+            NoteFormat::Bullet => format!("- [{}] {}\n", timestamp, content),
             NoteFormat::Table => format!("| {} | {} |\n", timestamp, content),
         }
+    }
+
+    /// Extract NaiveTime from a note line according to format
+    fn extract_time_from_note_line(&self, line: &str, format: &NoteFormat) -> Option<chrono::NaiveTime> {
+        match format {
+            NoteFormat::Bullet => {
+                // "- [HH:MM[:SS]] content"
+                let trimmed = line.trim_start();
+                if let Some(rest) = trimmed.strip_prefix("- ") {
+                    if let Some(after_bracket) = rest.strip_prefix('[') {
+                        if let Some(closing) = after_bracket.find(']') {
+                            let time_str = &after_bracket[..closing];
+                            chrono::NaiveTime::parse_from_str(time_str, "%H:%M:%S")
+                                .or_else(|_| chrono::NaiveTime::parse_from_str(time_str, "%H:%M")).ok()
+                        } else { None }
+                    } else { None }
+                } else { None }
+            }
+            NoteFormat::Table => {
+                // "| HH:MM | content |"
+                let trimmed = line.trim();
+                if trimmed.starts_with('|') {
+                    let cols: Vec<&str> = trimmed.trim_matches('|').split('|').map(|s| s.trim()).collect();
+                    if let Some(time_str) = cols.get(0) {
+                        chrono::NaiveTime::parse_from_str(time_str, "%H:%M:%S")
+                            .or_else(|_| chrono::NaiveTime::parse_from_str(time_str, "%H:%M")).ok()
+                    } else { None }
+                } else { None }
+            }
+        }
+    }
+
+    /// Find insertion index within a section (or whole file when section_start=0) to keep chronological order
+    fn find_insertion_index(&self, lines: &[&str], section_start: usize, new_time_str: &str, format: &NoteFormat) -> usize {
+        let section_end = if section_start == 0 { lines.len() } else { self.find_section_end(lines, section_start) };
+        let new_time = chrono::NaiveTime::parse_from_str(new_time_str, "%H:%M:%S")
+            .or_else(|_| chrono::NaiveTime::parse_from_str(new_time_str, "%H:%M")).ok();
+
+        // Scan content lines and find first with time greater than new_time
+        let mut content_end = section_start + 1;
+        let mut insert_at = None;
+        for i in section_start + 1..section_end {
+            let trimmed = lines[i].trim();
+            if !trimmed.is_empty() { content_end = i + 1; }
+
+            let existing_time_opt = match format {
+                NoteFormat::Bullet => {
+                    if trimmed.starts_with("- ") {
+                        if let Some(rest) = trimmed.strip_prefix("- ") {
+                            if let Some(after_bracket) = rest.strip_prefix('[') {
+                                if let Some(closing) = after_bracket.find(']') {
+                                    let ts = &after_bracket[..closing];
+                                    chrono::NaiveTime::parse_from_str(ts, "%H:%M:%S")
+                                        .or_else(|_| chrono::NaiveTime::parse_from_str(ts, "%H:%M")).ok()
+                                } else { None }
+                            } else { None }
+                        } else { None }
+                    } else { None }
+                }
+                NoteFormat::Table => {
+                    if trimmed.starts_with('|') && !trimmed.starts_with("|---") {
+                        let cols: Vec<&str> = trimmed.trim_matches('|').split('|').map(|s| s.trim()).collect();
+                        cols.get(0).and_then(|ts| chrono::NaiveTime::parse_from_str(ts, "%H:%M:%S")
+                            .or_else(|_| chrono::NaiveTime::parse_from_str(ts, "%H:%M")).ok())
+                    } else { None }
+                }
+            };
+
+            if let (Some(new_t), Some(old_t)) = (new_time, existing_time_opt) {
+                if new_t < old_t {
+                    insert_at = Some(i);
+                    break;
+                }
+            }
+        }
+
+        insert_at.unwrap_or(content_end)
     }
 
     /// Detect the current note format in the content
@@ -522,7 +671,7 @@ impl Vault {
             // Convert table to bullet
             else if target_format == &NoteFormat::Bullet && trimmed.starts_with("|") && !trimmed.starts_with("|---") && !trimmed.contains("Time") && !trimmed.contains("Content") {
                 if let Some((timestamp, note_content)) = self.parse_table_note(trimmed) {
-                    converted_lines.push(format!("- {} {}", timestamp, note_content));
+                    converted_lines.push(format!("- [{}] {}", timestamp, note_content));
                 } else {
                     converted_lines.push(line.to_string());
                 }
@@ -588,14 +737,14 @@ impl Vault {
 
     /// Parse a bullet note to extract timestamp and content
     fn parse_bullet_note(&self, line: &str) -> Option<(String, String)> {
-        // Format: "- timestamp content"
-        if let Some(start) = line.find("- ") {
-            let after_dash = &line[start + 2..];
-            // Find the first space after the dash to separate timestamp from content
-            if let Some(space_pos) = after_dash.find(' ') {
-                let timestamp = after_dash[..space_pos].to_string();
-                let content = after_dash[space_pos + 1..].trim().to_string();
-                return Some((timestamp, content));
+        // Format: "- [timestamp] content"
+        if let Some(after_dash) = line.trim_start().strip_prefix("- ") {
+            if let Some(after_bracket) = after_dash.strip_prefix('[') {
+                if let Some(closing) = after_bracket.find(']') {
+                    let timestamp = after_bracket[..closing].to_string();
+                    let content = after_bracket[closing + 1..].trim().to_string();
+                    return Some((timestamp, content));
+                }
             }
         }
         None
@@ -641,6 +790,12 @@ mod tests {
             template_file: None,
             file_path_format: None,
             list_type: Some(NoteFormat::Table),
+            section_name: None,
+            weekly_format: None,
+            monthly_format: None,
+            quarterly_format: None,
+            yearly_format: None,
+            note_format: None,
         };
 
         let vault = Vault::new(config);
@@ -653,10 +808,10 @@ mod tests {
         let date = chrono::Local::now().date_naive();
 
         // Add first note
-        vault.add_note("Test1", None, None).unwrap();
+        vault.add_note("Test1", None).unwrap();
 
         // Add second note
-        vault.add_note("Test2", None, None).unwrap();
+        vault.add_note("Test2", None).unwrap();
 
         // Read the file content
         let note_path = vault.get_note_path(date);
@@ -730,10 +885,10 @@ date: 2025-10-26
         fs::write(&note_path, existing_content).unwrap();
 
         // Add third note to existing file
-        vault.add_note("Test3", None, None).unwrap();
+        vault.add_note("Test3", None).unwrap();
 
         // Add fourth note to existing file
-        vault.add_note("Test4", None, None).unwrap();
+        vault.add_note("Test4", None).unwrap();
 
         // Read the file content
         let note_path = vault.get_note_path(date);
@@ -797,7 +952,7 @@ date: 2025-10-26
         let date = chrono::Local::now().date_naive();
 
         // Add first note - should not create a header
-        vault.add_note("Test1", None, None).unwrap();
+        vault.add_note("Test1", None).unwrap();
 
         // Read the file content
         let note_path = vault.get_note_path(date);
@@ -822,13 +977,13 @@ date: 2025-10-26
         let date = chrono::Local::now().date_naive();
 
         // Add first note to create table format
-        vault.add_note("Test1", None, None).unwrap();
+        vault.add_note("Test1", None).unwrap();
 
         // Switch to bullet format
         vault.config.list_type = Some(NoteFormat::Bullet);
 
         // Add second note - should convert to bullet format without headers
-        vault.add_note("Test2", None, None).unwrap();
+        vault.add_note("Test2", None).unwrap();
 
         // Read the file content
         let note_path = vault.get_note_path(date);
@@ -868,7 +1023,7 @@ date: 2025-10-26
         vault.config.list_type = Some(NoteFormat::Table);
 
         // Add third note - should convert to table format without blank lines
-        vault.add_note("Test3", None, None).unwrap();
+        vault.add_note("Test3", None).unwrap();
 
         // Read the file content
         let note_path = vault.get_note_path(date);
@@ -922,7 +1077,7 @@ date: 2025-10-26
         vault.config.list_type = Some(NoteFormat::Bullet);
 
         // Add third note - should convert to bullet format without blank lines
-        vault.add_note("Test3", None, None).unwrap();
+        vault.add_note("Test3", None).unwrap();
 
         // Read the file content
         let note_path = vault.get_note_path(date);
@@ -969,10 +1124,10 @@ date: 2025-10-26
         fs::write(&note_path, existing_content).unwrap();
 
         // Add third note to existing file - should not create blank lines
-        vault.add_note("Test3", None, None).unwrap();
+        vault.add_note("Test3", None).unwrap();
 
         // Add fourth note to existing file - should not create blank lines
-        vault.add_note("Test4", None, None).unwrap();
+        vault.add_note("Test4", None).unwrap();
 
         // Read the file content
         let note_path = vault.get_note_path(date);
@@ -1021,7 +1176,7 @@ date: 2025-10-26
         fs::write(&note_path, existing_content).unwrap();
 
         // Add third note to existing file - this should trigger the append logic
-        vault.add_note("Test3", None, None).unwrap();
+        vault.add_note("Test3", None).unwrap();
 
         // Read the file content
         let note_path = vault.get_note_path(date);
@@ -1076,7 +1231,7 @@ Some other content
         fs::write(&note_path, existing_content).unwrap();
 
         // Add third note to the section - should not create blank lines
-        vault.add_note("Test3", None, None).unwrap();
+        vault.add_note("Test3", None).unwrap();
 
         // Read the file content
         let note_path = vault.get_note_path(date);
@@ -1106,6 +1261,9 @@ Some other content
                     panic!("Blank line found between notes in section");
                 }
                 blank_line_found = false;
+            } else if in_section && (line.starts_with("|---") || line.contains("Time") || line.contains("Content")) {
+                // Reset on table header/separator lines
+                blank_line_found = false;
             } else if in_section && line.trim().is_empty() {
                 blank_line_found = true;
             }
@@ -1118,11 +1276,11 @@ Some other content
         let date = chrono::Local::now().date_naive();
 
         // Add some notes in table format
-        vault.add_note("Test1", None, None).unwrap();
-        vault.add_note("Test2", None, None).unwrap();
+        vault.add_note("Test1", None).unwrap();
+        vault.add_note("Test2", None).unwrap();
 
         // Test listing without header flag
-        let notes = vault.list_notes(date, None).unwrap();
+        let notes = vault.list_notes(date).unwrap();
         assert!(!notes.is_empty(), "Should have notes");
         
         // Verify that table headers are not included in the notes
@@ -1142,10 +1300,10 @@ Some other content
         let date = chrono::Local::now().date_naive();
 
         // Add first note
-        vault.add_note("Test1", None, None).unwrap();
+        vault.add_note("Test1", None).unwrap();
 
         // Add second note
-        vault.add_note("Test2", None, None).unwrap();
+        vault.add_note("Test2", None).unwrap();
 
         // Read the file content
         let note_path = vault.get_note_path(date);

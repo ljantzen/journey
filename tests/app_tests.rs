@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use tempfile::TempDir;
 use std::env;
 use chrono::{NaiveDate, Local};
+use serial_test::serial;
 
 // Safety mechanism: Ensure tests never touch production config
 fn ensure_test_isolation() {
@@ -49,24 +50,11 @@ fn create_app_with_config(config: Config) -> (App, impl FnOnce()) {
 }
 
 #[test]
+#[serial]
 fn test_app_creation() {
     // Create a config with one vault so the app can be created
     let mut config = Config::new();
-    let vault_config = VaultConfig {
-        name: "test-vault".to_string(),
-        path: PathBuf::from("/tmp/test-vault"),
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: None,
-        date_format: None,
-        template_file: None,
-        file_path_format: None,
-        weekly_format: None,
-        monthly_format: None,
-        quarterly_format: None,
-        yearly_format: None,
-        note_format: None,
-    };
+    let vault_config = VaultConfig::test_config("test-vault", "/tmp/test-vault");
     config.add_vault(vault_config);
     
     let (app, _cleanup) = create_app_with_config(config);
@@ -76,24 +64,11 @@ fn test_app_creation() {
 }
 
 #[test]
+#[serial]
 fn test_single_vault_auto_selection() {
     // Create a config with one vault
     let mut config = Config::new();
-    let vault_config = VaultConfig {
-        name: "test-vault".to_string(),
-        path: PathBuf::from("/tmp/test-vault"),
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: None,
-        date_format: None,
-        template_file: None,
-        file_path_format: None,
-        weekly_format: None,
-        monthly_format: None,
-        quarterly_format: None,
-        yearly_format: None,
-        note_format: None,
-    };
+    let vault_config = VaultConfig::test_config("test-vault", "/tmp/test-vault");
     config.add_vault(vault_config);
     
     let (app, _cleanup) = create_app_with_config(config);
@@ -108,41 +83,14 @@ fn test_single_vault_auto_selection() {
 }
 
 #[test]
+#[serial]
 fn test_multiple_vaults_require_specification() {
     // Create a config with multiple vaults
     let mut config = Config::new();
     
-    let vault1 = VaultConfig {
-        name: "vault1".to_string(),
-        path: PathBuf::from("/tmp/vault1"),
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: None,
-        date_format: None,
-        template_file: None,
-        file_path_format: None,
-        weekly_format: None,
-        monthly_format: None,
-        quarterly_format: None,
-        yearly_format: None,
-        note_format: None,
-    };
+    let vault1 = VaultConfig::test_config("vault1", "/tmp/vault1");
     
-    let vault2 = VaultConfig {
-        name: "vault2".to_string(),
-        path: PathBuf::from("/tmp/vault2"),
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: None,
-        date_format: None,
-        template_file: None,
-        file_path_format: None,
-        weekly_format: None,
-        monthly_format: None,
-        quarterly_format: None,
-        yearly_format: None,
-        note_format: None,
-    };
+    let vault2 = VaultConfig::test_config("vault2", "/tmp/vault2");
     
     config.add_vault(vault1);
     config.add_vault(vault2);
@@ -162,6 +110,7 @@ fn test_multiple_vaults_require_specification() {
 }
 
 #[test]
+#[serial]
 fn test_no_vaults_configured() {
     // Create an empty config
     let config = Config::new();
@@ -177,6 +126,7 @@ fn test_no_vaults_configured() {
 }
 
 #[test]
+#[serial]
 fn test_no_config_file_exists() {
     // Ensure test isolation
     ensure_test_isolation();
@@ -209,6 +159,7 @@ fn test_no_config_file_exists() {
 }
 
 #[test]
+#[serial]
 fn test_init_vault_with_name() {
     // Ensure test isolation
     ensure_test_isolation();
@@ -237,6 +188,7 @@ fn test_init_vault_with_name() {
 }
 
 #[test]
+#[serial]
 fn test_init_vault_without_name() {
     // Ensure test isolation
     ensure_test_isolation();
@@ -262,6 +214,7 @@ fn test_init_vault_without_name() {
 }
 
 #[test]
+#[serial]
 fn test_init_vault_invalid_path() {
     // Ensure test isolation
     ensure_test_isolation();
@@ -289,6 +242,7 @@ fn test_init_vault_invalid_path() {
 }
 
 #[test]
+#[serial]
 fn test_production_config_isolation() {
     // This test verifies that tests never touch production config
     // even if production config exists
@@ -298,21 +252,7 @@ fn test_production_config_isolation() {
     
     // Create a test config
     let mut test_config = Config::new();
-    let vault_config = VaultConfig {
-        name: "test-vault".to_string(),
-        path: PathBuf::from("/tmp/test-vault"), // This will be overridden by create_app_with_config
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: None,
-        date_format: None,
-        template_file: None,
-        file_path_format: None,
-        weekly_format: None,
-        monthly_format: None,
-        quarterly_format: None,
-        yearly_format: None,
-        note_format: None,
-    };
+    let vault_config = VaultConfig::test_config("test-vault", "/tmp/test-vault");
     test_config.add_vault(vault_config);
     
     // Create app - should use test config, not production
@@ -335,24 +275,11 @@ fn test_production_config_isolation() {
 }
 
 #[test]
+#[serial]
 fn test_add_note_future_date_absolute() {
     // Test adding a note to a future date using --date
     let mut config = Config::new();
-    let vault_config = VaultConfig {
-        name: "test".to_string(),
-        path: std::path::PathBuf::from("/tmp/test-vault"),
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: None,
-        date_format: None,
-        template_file: None,
-        file_path_format: None,
-        weekly_format: None,
-        monthly_format: None,
-        quarterly_format: None,
-        yearly_format: None,
-        note_format: None,
-    };
+    let vault_config = VaultConfig::test_config("test", "/tmp/test-vault");
     config.add_vault(vault_config);
     
     let (app, _cleanup) = create_app_with_config(config);
@@ -375,24 +302,11 @@ fn test_add_note_future_date_absolute() {
 }
 
 #[test]
+#[serial]
 fn test_add_note_future_date_relative() {
     // Test adding a note to a future date using --relative-date
     let mut config = Config::new();
-    let vault_config = VaultConfig {
-        name: "test".to_string(),
-        path: std::path::PathBuf::from("/tmp/test-vault"),
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: None,
-        date_format: None,
-        template_file: None,
-        file_path_format: None,
-        weekly_format: None,
-        monthly_format: None,
-        quarterly_format: None,
-        yearly_format: None,
-        note_format: None,
-    };
+    let vault_config = VaultConfig::test_config("test", "/tmp/test-vault");
     config.add_vault(vault_config);
     
     let (app, _cleanup) = create_app_with_config(config);
@@ -414,24 +328,11 @@ fn test_add_note_future_date_relative() {
 }
 
 #[test]
+#[serial]
 fn test_add_note_intuitive_relative_dates() {
     // Test the intuitive relative date behavior
     let mut config = Config::new();
-    let vault_config = VaultConfig {
-        name: "test".to_string(),
-        path: std::path::PathBuf::from("/tmp/test-vault"),
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: None,
-        date_format: None,
-        template_file: None,
-        file_path_format: None,
-        weekly_format: None,
-        monthly_format: None,
-        quarterly_format: None,
-        yearly_format: None,
-        note_format: None,
-    };
+    let vault_config = VaultConfig::test_config("test", "/tmp/test-vault");
     config.add_vault(vault_config);
     
     let (app, _cleanup) = create_app_with_config(config);
@@ -470,41 +371,14 @@ fn test_add_note_intuitive_relative_dates() {
 }
 
 #[test]
+#[serial]
 fn test_unlist_vault_success() {
     // Create a config with multiple vaults
     let mut config = Config::new();
     
-    let vault1 = VaultConfig {
-        name: "vault1".to_string(),
-        path: PathBuf::from("/tmp/vault1"),
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: None,
-        date_format: None,
-        template_file: None,
-        file_path_format: None,
-        weekly_format: None,
-        monthly_format: None,
-        quarterly_format: None,
-        yearly_format: None,
-        note_format: None,
-    };
+    let vault1 = VaultConfig::test_config("vault1", "/tmp/vault1");
     
-    let vault2 = VaultConfig {
-        name: "vault2".to_string(),
-        path: PathBuf::from("/tmp/vault2"),
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: None,
-        date_format: None,
-        template_file: None,
-        file_path_format: None,
-        weekly_format: None,
-        monthly_format: None,
-        quarterly_format: None,
-        yearly_format: None,
-        note_format: None,
-    };
+    let vault2 = VaultConfig::test_config("vault2", "/tmp/vault2");
     
     config.add_vault(vault1);
     config.add_vault(vault2);
@@ -525,25 +399,12 @@ fn test_unlist_vault_success() {
 }
 
 #[test]
+#[serial]
 fn test_unlist_vault_not_found() {
     // Create a config with one vault
     let mut config = Config::new();
     
-    let vault = VaultConfig {
-        name: "vault1".to_string(),
-        path: PathBuf::from("/tmp/vault1"),
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: None,
-        date_format: None,
-        template_file: None,
-        file_path_format: None,
-        weekly_format: None,
-        monthly_format: None,
-        quarterly_format: None,
-        yearly_format: None,
-        note_format: None,
-    };
+    let vault = VaultConfig::test_config("vault1", "/tmp/vault1");
     
     config.add_vault(vault);
     
@@ -558,41 +419,14 @@ fn test_unlist_vault_not_found() {
 }
 
 #[test]
+#[serial]
 fn test_unlist_default_vault() {
     // Create a config with a default vault
     let mut config = Config::new();
     
-    let vault1 = VaultConfig {
-        name: "vault1".to_string(),
-        path: PathBuf::from("/tmp/vault1"),
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: None,
-        date_format: None,
-        template_file: None,
-        file_path_format: None,
-        weekly_format: None,
-        monthly_format: None,
-        quarterly_format: None,
-        yearly_format: None,
-        note_format: None,
-    };
+    let vault1 = VaultConfig::test_config("vault1", "/tmp/vault1");
     
-    let vault2 = VaultConfig {
-        name: "vault2".to_string(),
-        path: PathBuf::from("/tmp/vault2"),
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: None,
-        date_format: None,
-        template_file: None,
-        file_path_format: None,
-        weekly_format: None,
-        monthly_format: None,
-        quarterly_format: None,
-        yearly_format: None,
-        note_format: None,
-    };
+    let vault2 = VaultConfig::test_config("vault2", "/tmp/vault2");
     
     config.add_vault(vault1);
     config.add_vault(vault2);

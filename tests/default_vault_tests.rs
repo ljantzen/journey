@@ -8,37 +8,9 @@ fn test_set_default_vault() {
     let mut config = Config::new();
     
     // Add some vaults
-    let vault1 = VaultConfig {
-        name: "vault1".to_string(),
-        path: PathBuf::from("/path1"),
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: None,
-        date_format: None,
-        template_file: None,
-        file_path_format: None,
-        weekly_format: None,
-        monthly_format: None,
-        quarterly_format: None,
-        yearly_format: None,
-        note_format: None,
-    };
+    let vault1 = VaultConfig::test_config("vault1", "/path1");
     
-    let vault2 = VaultConfig {
-        name: "vault2".to_string(),
-        path: PathBuf::from("/path2"),
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: None,
-        date_format: None,
-        template_file: None,
-        file_path_format: None,
-        weekly_format: None,
-        monthly_format: None,
-        quarterly_format: None,
-        yearly_format: None,
-        note_format: None,
-    };
+    let vault2 = VaultConfig::test_config("vault2", "/path2");
     
     config.add_vault(vault1);
     config.add_vault(vault2);
@@ -63,21 +35,7 @@ fn test_get_default_vault() {
     let mut config = Config::new();
     
     // Add a vault
-    let vault = VaultConfig {
-        name: "test_vault".to_string(),
-        path: PathBuf::from("/test"),
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: None,
-        date_format: None,
-        template_file: None,
-        file_path_format: None,
-        weekly_format: None,
-        monthly_format: None,
-        quarterly_format: None,
-        yearly_format: None,
-        note_format: None,
-    };
+    let vault = VaultConfig::test_config("test_vault", "/test");
     
     config.add_vault(vault);
     
@@ -97,21 +55,7 @@ fn test_get_default_vault() {
 fn test_clear_default_vault() {
     let mut config = Config::new();
     
-    let vault = VaultConfig {
-        name: "test_vault".to_string(),
-        path: PathBuf::from("/test"),
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: None,
-        date_format: None,
-        template_file: None,
-        file_path_format: None,
-        weekly_format: None,
-        monthly_format: None,
-        quarterly_format: None,
-        yearly_format: None,
-        note_format: None,
-    };
+    let vault = VaultConfig::test_config("test_vault", "/test");
     
     config.add_vault(vault);
     config.set_default_vault("test_vault").unwrap();
@@ -130,21 +74,7 @@ fn test_default_vault_fallback() {
     assert!(config.get_default_vault().is_none());
     
     // Add a vault
-    let vault = VaultConfig {
-        name: "test_vault".to_string(),
-        path: PathBuf::from("/test"),
-        locale: "en-US".to_string(),
-        phrases: HashMap::new(),
-        section_name: None,
-        date_format: None,
-        template_file: None,
-        file_path_format: None,
-        weekly_format: None,
-        monthly_format: None,
-        quarterly_format: None,
-        yearly_format: None,
-        note_format: None,
-    };
+    let vault = VaultConfig::test_config("test_vault", "/test");
     
     config.add_vault(vault);
     

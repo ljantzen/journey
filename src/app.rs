@@ -49,8 +49,6 @@ pub struct CliArgs {
     pub relative_date: Option<i64>,
     pub time: Option<String>,
     pub time_format: Option<String>,
-    pub category: Option<String>,
-    pub header: bool,
 }
 
 pub struct App {
@@ -62,13 +60,12 @@ impl App {
     pub fn new() -> Result<Self, JourneyError> {
         let config_manager = ConfigManager::new()?;
         
-        // Check if config file exists
+        // Strictly require the config file to exist; surface a clear error otherwise
         if !config_manager.config_exists() {
             return Err(JourneyError::Config(
                 "No configuration file found. Please run 'journey --init --path <path>' to create your first vault.".to_string()
             ));
         }
-        
         let config = config_manager.load_config()?;
         
         Ok(Self {
@@ -138,15 +135,15 @@ impl App {
     fn handle_command_with_args(&mut self, cmd: crate::cli::Commands, vault: Option<String>, date: Option<String>, relative_date: Option<i64>, time: Option<String>, time_format: Option<String>) -> Result<(), JourneyError> {
         match cmd {
             crate::cli::Commands::Add { content } => {
-                let cli_args = CliArgs { vault, date, relative_date, time, time_format, category: None, header: false };
-                self.add_note(&content, &cli_args)
+                let cli_args = CliArgs { vault, date, relative_date, time, time_format };
+                self.add_note(&content, &cli_args, None)
             }
             crate::cli::Commands::List => {
-                let cli_args = CliArgs { vault, date, relative_date, time, time_format, category: None, header: false };
-                self.list_notes(&cli_args)
+                let cli_args = CliArgs { vault, date, relative_date, time, time_format };
+                self.list_notes(&cli_args, false, None)
             }
             crate::cli::Commands::Edit => {
-                let cli_args = CliArgs { vault, date, relative_date, time, time_format, category: None, header: false };
+                let cli_args = CliArgs { vault, date, relative_date, time, time_format };
                 self.edit_notes(&cli_args)
             }
         }
@@ -159,25 +156,23 @@ impl App {
             relative_date: cli.relative_date,
             time: cli.time.clone(),
             time_format: cli.time_format.clone(),
-            category: cli.category.clone(),
-            header: cli.header,
         };
         
         if cli.list {
-            self.list_notes(&cli_args)
+            self.list_notes(&cli_args, cli.header, cli.category.as_deref())
         } else if cli.edit {
             self.edit_notes(&cli_args)
         } else if cli.stdin {
-            self.handle_stdin_input(&cli_args)
+            self.handle_stdin_input(&cli_args, cli.category.as_deref())
         } else if let Some(note) = &cli.add_note {
-            self.add_note(note, &cli_args)
+            self.add_note(note, &cli_args, cli.category.as_deref())
         } else if !cli.note_content.is_empty() {
             // Default behavior: treat note_content as note content
             let content = cli.note_content.join(" ");
-            self.add_note(&content, &cli_args)
+            self.add_note(&content, &cli_args, cli.category.as_deref())
         } else {
             // Default behavior: list today's notes (same as --list)
-            self.list_notes(&cli_args)
+            self.list_notes(&cli_args, cli.header, cli.category.as_deref())
         }
     }
 
@@ -197,10 +192,10 @@ impl App {
         let vault_name = if let Some(name) = name {
             name
         } else {
-            path.file_name()
-                .and_then(|n| n.to_str())
-                .ok_or_else(|| JourneyError::Config("Invalid path: cannot extract basename".to_string()))?
-                .to_string()
+            match path.file_name().and_then(|n| n.to_str()) {
+                Some(s) if !s.is_empty() => s.to_string(),
+                _ => return Err(JourneyError::Config("Invalid path: cannot extract basename".to_string())),
+            }
         };
 
         // Get system locale
@@ -222,6 +217,12 @@ impl App {
             template_file: None,
             file_path_format: None,
             list_type: None,
+            section_name: None,
+            weekly_format: None,
+            monthly_format: None,
+            quarterly_format: None,
+            yearly_format: None,
+            note_format: None,
         };
 
         // Add to config and save
@@ -299,6 +300,12 @@ impl App {
             template_file: None,
             file_path_format: None,
             list_type: None,
+            section_name: None,
+            weekly_format: None,
+            monthly_format: None,
+            quarterly_format: None,
+            yearly_format: None,
+            note_format: None,
         };
 
         // Apply Obsidian plugin configurations (excluding journals for now)
@@ -517,7 +524,7 @@ impl App {
         Ok(())
     }
 
-    fn add_note(&mut self, content: &str, cli: &CliArgs) -> Result<(), JourneyError> {
+    fn add_note(&mut self, content: &str, cli: &CliArgs, category: Option<&str>) -> Result<(), JourneyError> {
         let vault = self.get_vault(cli.vault.as_deref())?;
         let date = self.parse_date(cli)?;
         let time = self.parse_time(cli)?;
@@ -530,34 +537,32 @@ impl App {
             vault.date_handler.combine_date_time(date, current_time)
         };
 
-        vault.add_note(content, Some(timestamp), cli.category.as_deref())?;
+        vault.add_note_with_category(content, Some(timestamp), category)?;
         println!("Note added successfully!");
         Ok(())
     }
 
-    fn list_notes(&self, cli: &CliArgs) -> Result<(), JourneyError> {
+    fn list_notes(&self, cli: &CliArgs, header: bool, category: Option<&str>) -> Result<(), JourneyError> {
         let vault = self.get_vault(cli.vault.as_deref())?;
         let date = self.parse_date(cli)?;
         
-        let notes = vault.list_notes(date, cli.category.as_deref())?;
+        let notes = vault.list_notes_with_category(date, category)?;
         
         if notes.is_empty() {
             println!("No notes found for {}", vault.date_handler.format_date(date));
         } else {
-            // Only show "Notes for" message if header flag is not set
-            if !cli.header {
+            let has_table_format = notes.iter().any(|note| note.trim().starts_with("|"));
+
+            // Suppress "Notes for" message when in table mode
+            if !header && !has_table_format {
                 println!("Notes for {}:", vault.date_handler.format_date(date));
             }
-            
+
             // If header flag is set and we have table format notes, include table headers
-            if cli.header && !notes.is_empty() {
-                // Check if any note is in table format
-                let has_table_format = notes.iter().any(|note| note.trim().starts_with("|"));
-                if has_table_format {
-                    let (time_header, content_header) = vault.get_table_headers();
-                    println!("| {} | {} |", time_header, content_header);
-                    println!("|------|----------|");
-                }
+            if header && has_table_format {
+                let (time_header, content_header) = vault.get_table_headers();
+                println!("| {} | {} |", time_header, content_header);
+                println!("|------|----------|");
             }
             
             for note in notes {
@@ -591,6 +596,11 @@ impl App {
 
 
     pub fn get_vault(&self, vault_name: Option<&str>) -> Result<Vault, JourneyError> {
+        // Explicitly error if no vaults configured
+        if self.config.vaults.is_empty() {
+            return Err(JourneyError::VaultNotFound("No vaults configured. Use 'journey init' to create one.".to_string()));
+        }
+
         let vault_config = if let Some(name) = vault_name {
             // User explicitly specified a vault
             self.config.get_vault(name)
@@ -641,7 +651,7 @@ impl App {
         }
     }
 
-    fn handle_stdin_input(&mut self, cli: &CliArgs) -> Result<(), JourneyError> {
+    fn handle_stdin_input(&mut self, cli: &CliArgs, category: Option<&str>) -> Result<(), JourneyError> {
         use std::io::{self, BufRead};
         
         let stdin = io::stdin();
@@ -659,7 +669,7 @@ impl App {
             }
             
             // Add each line as a separate note
-            self.add_note(trimmed, cli)?;
+            self.add_note(trimmed, cli, category)?;
             note_count += 1;
         }
         

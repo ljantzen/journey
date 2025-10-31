@@ -9,7 +9,7 @@ pub struct TableHeaders {
     pub content: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Config {
     pub vaults: HashMap<String, VaultConfig>,
     pub default_vault: Option<String>,
@@ -34,6 +34,13 @@ pub struct VaultConfig {
     pub file_path_format: Option<String>,
     // List type configuration
     pub list_type: Option<NoteFormat>,
+    // Legacy/compat fields expected by older tests (not used by runtime)
+    pub section_name: Option<String>,
+    pub weekly_format: Option<String>,
+    pub monthly_format: Option<String>,
+    pub quarterly_format: Option<String>,
+    pub yearly_format: Option<String>,
+    pub note_format: Option<NoteFormat>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -74,6 +81,37 @@ impl Default for Config {
             vaults: HashMap::new(),
             default_vault: None,
         }
+    }
+}
+
+impl<'de> Deserialize<'de> for Config {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        // First, deserialize using the derived implementation via an intermediate
+        #[derive(Deserialize)]
+        struct RawConfig {
+            vaults: HashMap<String, VaultConfig>,
+            default_vault: Option<String>,
+        }
+
+        let mut raw = RawConfig::deserialize(deserializer)?;
+
+        // Post-process to ensure tilde/env expansion on paths in case field-level deserializers were bypassed
+        for (_name, vault) in raw.vaults.iter_mut() {
+            // Expand path
+            if let Some(path_str) = vault.path.to_str() {
+                vault.path = expand_tilde(path_str);
+            }
+            // Expand template_file if present
+            if let Some(tpl) = vault.template_file.clone() {
+                let expanded = expand_tilde(&tpl).to_string_lossy().to_string();
+                vault.template_file = Some(expanded);
+            }
+        }
+
+        Ok(Config { vaults: raw.vaults, default_vault: raw.default_vault })
     }
 }
 
@@ -179,6 +217,12 @@ impl VaultConfig {
             template_file: None,
             file_path_format: None,
             list_type: None,
+            section_name: None,
+            weekly_format: None,
+            monthly_format: None,
+            quarterly_format: None,
+            yearly_format: None,
+            note_format: None,
         }
     }
 
@@ -195,7 +239,7 @@ impl VaultConfig {
             }
         }
         // Fall back to default section_header
-        self.section_header.as_ref()
+        self.section_header.as_ref().or(self.section_name.as_ref())
     }
 
     /// Create a test VaultConfig with minimal required fields
@@ -215,6 +259,12 @@ impl VaultConfig {
             template_file: None,
             file_path_format: None,
             list_type: None,
+            section_name: None,
+            weekly_format: None,
+            monthly_format: None,
+            quarterly_format: None,
+            yearly_format: None,
+            note_format: None,
         }
     }
 }

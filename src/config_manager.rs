@@ -38,13 +38,19 @@ impl ConfigManager {
     }
 
     pub fn save_config(&self, config: &Config) -> Result<(), JourneyError> {
-        let content = serde_yaml_ng::to_string(config)?;
+        let mut content = serde_yaml_ng::to_string(config)?;
+        // Ensure default_vault is present if set
+        if let Some(default_name) = &config.default_vault {
+            if !content.contains("default_vault:") {
+                content.push_str(&format!("default_vault: {}\n", default_name));
+            }
+        }
         fs::write(&self.config_path, content)?;
         Ok(())
     }
 
     pub fn config_exists(&self) -> bool {
-        self.config_path.exists()
+        self.config_path.is_file()
     }
 }
 

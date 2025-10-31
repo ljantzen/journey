@@ -1,6 +1,7 @@
 use journey::config::{Config, VaultConfig};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use serial_test::serial;
 
 #[test]
 fn test_config_new() {
@@ -61,6 +62,7 @@ fn test_vault_config_creation() {
 }
 
 #[test]
+#[serial]
 fn test_tilde_expansion() {
     use serde_yaml_ng;
     use std::env;
@@ -98,13 +100,13 @@ vaults:
 }
 
 #[test]
+#[serial]
 fn test_tilde_expansion_with_subdirectory() {
     use serde_yaml_ng;
     use std::env;
     
-    // Set a test HOME environment variable
-    let original_home = env::var("HOME").unwrap_or_default();
-    env::set_var("HOME", "/home/testuser");
+    // Get the current HOME for expected path
+    let current_home = env::var("HOME").unwrap_or_else(|_| "/home/user".to_string());
     
     // Test YAML with tilde expansion in subdirectory
     let yaml_content = r#"
@@ -123,24 +125,13 @@ vaults:
     let config: Config = serde_yaml_ng::from_str(yaml_content).unwrap();
     let vault = config.get_vault("test").unwrap();
     
-    // The path should be expanded to the full home directory path
-    // Note: The actual expansion uses the real HOME, not the test one
-    let expected_path = if let Ok(home) = env::var("HOME") {
-        PathBuf::from(home).join("Documents/journals")
-    } else {
-        PathBuf::from("~/Documents/journals")
-    };
+    // The path should be expanded to the current home directory path
+    let expected_path = PathBuf::from(current_home).join("Documents/journals");
     assert_eq!(vault.path, expected_path);
-    
-    // Restore original HOME
-    if !original_home.is_empty() {
-        env::set_var("HOME", original_home);
-    } else {
-        env::remove_var("HOME");
-    }
 }
 
 #[test]
+#[serial]
 fn test_tilde_expansion_windows_style() {
     use serde_yaml_ng;
     use std::env;
@@ -192,13 +183,14 @@ vaults:
 }
 
 #[test]
+#[serial]
 fn test_tilde_expansion_fallback() {
     use serde_yaml_ng;
     use std::env;
     
     // Test fallback behavior when no home directory is found
-    let original_userprofile = env::var("USERPROFILE").unwrap_or_default();
-    let original_home = env::var("HOME").unwrap_or_default();
+    let original_userprofile = env::var("USERPROFILE").ok();
+    let original_home = env::var("HOME").ok();
     
     // Remove environment variables to test fallback
     env::remove_var("USERPROFILE");
@@ -228,15 +220,19 @@ vaults:
     assert!(path_str.contains("fallback-test"));
     
     // Restore original environment variables
-    if !original_userprofile.is_empty() {
-        env::set_var("USERPROFILE", original_userprofile);
+    if let Some(val) = original_userprofile {
+        env::set_var("USERPROFILE", val);
     }
-    if !original_home.is_empty() {
-        env::set_var("HOME", original_home);
+    // Don't remove if it wasn't set originally
+    
+    if let Some(val) = original_home {
+        env::set_var("HOME", val);
     }
+    // Don't remove if it wasn't set originally
 }
 
 #[test]
+#[serial]
 fn test_windows_env_var_expansion() {
     use serde_yaml_ng;
     use std::env;
@@ -288,6 +284,7 @@ vaults:
 }
 
 #[test]
+#[serial]
 fn test_windows_env_var_expansion_appdata() {
     use serde_yaml_ng;
     use std::env;
@@ -332,6 +329,7 @@ vaults:
 }
 
 #[test]
+#[serial]
 fn test_windows_env_var_expansion_multiple() {
     use serde_yaml_ng;
     use std::env;
@@ -383,6 +381,7 @@ vaults:
 }
 
 #[test]
+#[serial]
 fn test_template_file_tilde_expansion() {
     use serde_yaml_ng;
     use std::env;
@@ -420,6 +419,7 @@ vaults:
 }
 
 #[test]
+#[serial]
 fn test_template_file_windows_env_var_expansion() {
     use serde_yaml_ng;
     use std::env;
