@@ -261,24 +261,24 @@ impl App {
         // Print plugin detection results
         println!("🔍 Detected Obsidian plugins:");
         if let Some(_) = &plugin_configs.daily_notes {
-            println!("  ✅ Daily Notes (core plugin) - enabled");
+            println!("Daily Notes (core plugin) - enabled");
         } else {
-            println!("  ❌ Daily Notes (core plugin) - not enabled");
+            println!("Daily Notes (core plugin) - not enabled");
         }
 
         if let Some(_) = &plugin_configs.periodic_notes {
-            println!("  ✅ Periodic Notes plugin - enabled");
+            println!("Periodic Notes plugin - enabled");
         } else {
-            println!("  ❌ Periodic Notes plugin - not enabled");
+            println!("Periodic Notes plugin - not enabled");
         }
 
         if !plugin_configs.journals.is_empty() {
-            println!("  ✅ Journals plugin - enabled ({} journal(s) configured)", plugin_configs.journals.len());
+            println!("Journals plugin - enabled ({} journal(s) configured)", plugin_configs.journals.len());
             for journal in &plugin_configs.journals {
-                println!("    📝 Journal: '{}'", journal.name);
+                println!("Journal: '{}'", journal.name);
             }
         } else {
-            println!("  ❌ Journals plugin - not configured");
+            println!("Journals plugin - not configured");
         }
 
         // Get system locale
@@ -340,7 +340,7 @@ impl App {
         
         // Print important configuration reminder
         println!();
-        println!("⚠️  IMPORTANT: Please review your configuration and add the missing essential information:");
+        println!("   IMPORTANT: Please review your configuration and add the missing essential information:");
         println!("   • section_header: The default section header in the daily note where journey will put your notes (e.g., '## Todays notes')");
         println!("   • list_type: The format for your notes ('bullet' or 'table')");
         println!("   • file_path_format: template string journey uses to determine the location of the daily note");
@@ -353,15 +353,15 @@ impl App {
         
         // Print configuration summary
         if let Some(daily_notes) = &plugin_configs.daily_notes {
-            println!("📅 Daily Notes: format='{}', folder='{}'", daily_notes.format, daily_notes.folder);
+            println!("Daily Notes: format='{}', folder='{}'", daily_notes.format, daily_notes.folder);
         }
         
         if let Some(periodic_notes) = &plugin_configs.periodic_notes {
-            println!("📊 Periodic Notes: enabled={}", periodic_notes.enabled);
+            println!("Periodic Notes: enabled={}", periodic_notes.enabled);
         }
         
         if !plugin_configs.journals.is_empty() {
-            println!("📚 Journals: {} configured", plugin_configs.journals.len());
+            println!("Journals: {} configured", plugin_configs.journals.len());
         }
         
         Ok(())
