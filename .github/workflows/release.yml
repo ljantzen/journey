@@ -33,9 +33,9 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           mkdir -p dist
-          cp target/release/journey.exe dist/obsidian-logging.exe
+          cp target/release/journey.exe dist/journey.exe
           cd dist
-          Compress-Archive -Path journey.exe -DestinationPath obsidian-logging-windows-latest.zip
+          Compress-Archive -Path journey.exe -DestinationPath journey-windows-latest.zip
         shell: pwsh
 
       - name: Package binary (Unix)
