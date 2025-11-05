@@ -1,0 +1,63 @@
+{
+  "name": "Journey CLI Development",
+  "image": "mcr.microsoft.com/devcontainers/rust:1-1-bullseye",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": false,
+      "upgradePackages": true,
+      "username": "vscode",
+      "uid": "1000",
+      "gid": "1000"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "dockerDashComposeVersion": "v2"
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "vadimcn.vscode-lldb",
+        "serayuzgur.crates",
+        "tamasfe.even-better-toml",
+        "usernamehw.errorlens"
+      ],
+      "settings": {
+        "rust-analyzer.checkOnSave.command": "clippy",
+        "rust-analyzer.cargo.features": "all",
+        "editor.formatOnSave": true,
+        "[rust]": {
+          "editor.defaultFormatter": "rust-lang.rust-analyzer",
+          "editor.formatOnSave": true
+        },
+        "[toml]": {
+          "editor.defaultFormatter": "tamasfe.even-better-toml"
+        }
+      }
+    }
+  },
+
+  "postCreateCommand": "rustc --version && cargo --version && rustfmt --version && cargo clippy --version",
+
+  "remoteUser": "vscode",
+  "remoteEnv": {
+    "CARGO_HOME": "/usr/local/cargo",
+    "RUSTUP_HOME": "/usr/local/rustup"
+  },
+  
+  "postStartCommand": "git config --global --add safe.directory ${containerWorkspaceFolder}",
+
+  "mounts": [
+    "source=${localWorkspaceFolder}/target,target=${containerWorkspaceFolder}/target,type=bind,consistency=cached"
+  ],
+
+  "forwardPorts": [],
+
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}"
+}
+
