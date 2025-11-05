@@ -103,7 +103,7 @@ Administrative tool for vault configuration:
 - List/unlist vaults
 - Show today's file path
 
-## Core Concepts
+P## Core Concepts
 
 ### Vaults
 A vault is a directory containing your journal notes. You can have multiple vaults for different purposes (work, personal, projects, etc.).
@@ -222,7 +222,7 @@ vaults:
     path: ~/Documents/journal
     locale: en_US.UTF-8
     list_type: bullet  # or "table"
-    section_header: "Daily Log"
+    section_header: "## Daily Log"
     phrases: {}
 ```
 
@@ -246,11 +246,11 @@ vaults:
       content: "Content"
     
     # Category sections
-    section_header: "General Notes"
-    section_header_work: "Work Tasks"
-    section_header_personal: "Personal Notes"
-    section_header_health: "Health & Fitness"
-    section_header_meetings: "Meeting Notes"
+    section_header: "## General Notes"
+    section_header_work: "## Work Tasks"
+    section_header_personal: "## Personal Notes"
+    section_header_health: "## Health & Fitness"
+    section_header_meetings: "## Meeting Notes"
     
     # Phrase expansion
     phrases:
